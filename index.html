@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#12615E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>SOXL 예약주문 계산기</title>
+<script>try{if(JSON.parse(localStorage.getItem("soxl-lock")||"null"))document.documentElement.dataset.locked="1"}catch(e){}</script>
+<style>html{-webkit-text-size-adjust:100%}body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+
+<style>
+:root{
+  --bg:#EEF1EF; --panel:#FFFFFF; --ink:#18212B; --muted:#5B6773; --line:#C4CEC9; --field:#FFFFFF; --fieldline:#9FB0A8;
+  --accent:#12615E; --accent-soft:#DCEDEA;
+  --buy:#C8323F; --buy-soft:#FBE9EB; --sell:#2152C4; --sell-soft:#E7EDFB;
+  --warn:#9A5B00; --warn-soft:#FFF1D6; --ok:#1F7A3E; --ok-soft:#E1F3E7;
+  --shadow:0 1px 2px rgba(24,33,43,.06),0 4px 16px rgba(24,33,43,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#10161B; --panel:#172027; --ink:#E6ECEA; --muted:#93A1AB; --line:#2A3740; --field:#0D1317; --fieldline:#4A5C68;
+    --accent:#5FC2BC; --accent-soft:#18332F;
+    --buy:#FF6B78; --buy-soft:#3A1C21; --sell:#7EA2FF; --sell-soft:#1A2544;
+    --warn:#F2B55B; --warn-soft:#3A2B12; --ok:#6FD394; --ok-soft:#16301F;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10161B; --panel:#172027; --ink:#E6ECEA; --muted:#93A1AB; --line:#2A3740; --field:#0D1317; --fieldline:#4A5C68;
+  --accent:#5FC2BC; --accent-soft:#18332F;
+  --buy:#FF6B78; --buy-soft:#3A1C21; --sell:#7EA2FF; --sell-soft:#1A2544;
+  --warn:#F2B55B; --warn-soft:#3A2B12; --ok:#6FD394; --ok-soft:#16301F;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-size:1.45rem;font-weight:700;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);font-size:.9rem;margin:2px 0 0}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 12px;font-size:.88rem;font-weight:500}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] button.primary{color:#0D1A19}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) button.primary{color:#0D1A19}}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:20px;align-items:start}
+.tabs,.mbar{display:none}
+@media (max-width:880px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .result{position:static}
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+  .tabs button{border:0;border-radius:7px;padding:10px;font-size:.95rem;font-weight:600;background:transparent;color:var(--muted)}
+  .tabs button[aria-selected="true"]{background:var(--accent);color:#fff}
+  body[data-tab="in"] .result{display:none}
+  body[data-tab="out"] .inputs{display:none}
+  body[data-tab="log"] .grid{display:none}
+  body:not([data-tab="log"]) .logp{display:none}
+  body[data-tab="in"] .mbar{display:flex}
+  .mbar{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);gap:10px;align-items:center;justify-content:space-between}
+  .mbar span{font-family:ui-monospace,"Roboto Mono",monospace;font-size:.8rem;color:var(--muted);line-height:1.35;min-width:0}
+  .mbar button{flex:none}
+  body{padding-bottom:96px}
+}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
+.inputs{display:flex;flex-direction:column;gap:14px}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec h2{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600;display:flex;gap:8px;align-items:baseline}
+.sec h2 .n{font-family:ui-monospace,"Roboto Mono","Noto Sans Mono",monospace;color:var(--accent)}
+.sec p.hint{margin:0;color:var(--muted);font-size:.82rem}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pair{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:6px;align-items:end}
+.pairs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:500}
+input{border-width:1.5px!important;font-family:ui-monospace,"Roboto Mono","Noto Sans Mono",monospace;font-size:.95rem;font-variant-numeric:tabular-nums;width:100%;padding:8px 10px;border:1px solid var(--fieldline);border-radius:7px;background:var(--field);color:var(--ink);min-height:42px}
+input.needs{border-color:var(--warn);background:var(--warn-soft)}
+details{border-top:1px dashed var(--line);padding-top:12px}
+summary{cursor:pointer;font-size:.85rem;color:var(--muted);font-weight:500}
+details[open] summary{margin-bottom:10px}
+.divider{height:1px;background:var(--line)}
+.result{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.78rem;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--field);color:var(--muted);border:1px solid var(--line)}
+.chip.up{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.start{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.orders{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ord{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 12px;border-top:1px solid var(--line)}
+.ord:first-child{border-top:0}
+.tag{font-size:.75rem;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap}
+.tag.b{background:var(--buy-soft);color:var(--buy)}
+.tag.s{background:var(--sell-soft);color:var(--sell)}
+.why{font-size:.76rem;color:var(--muted);line-height:1.35}
+.num{font-family:ui-monospace,"Roboto Mono","Noto Sans Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.num .p{font-size:1.12rem;font-weight:600}
+.num .q{font-size:.85rem;color:var(--muted)}
+.ord.off .num .p{color:var(--muted);font-weight:400;font-family:system-ui,"Noto Sans KR",sans-serif;font-size:.9rem}
+.ord.b .num .p{color:var(--buy)} .ord.s .num .p{color:var(--sell)}
+.ord.off.b .num .p,.ord.off.s .num .p{color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kv div{background:var(--bg);border-radius:8px;padding:8px 10px}
+.kv span{display:block;font-size:.72rem;color:var(--muted)}
+.kv b{font-family:ui-monospace,"Roboto Mono","Noto Sans Mono",monospace;font-size:.92rem;font-weight:500;font-variant-numeric:tabular-nums}
+.note{font-size:.82rem;border-radius:8px;padding:9px 11px;background:var(--warn-soft);color:var(--warn)}
+.note button{margin-top:6px;padding:5px 9px;font-size:.8rem}
+.foot{color:var(--muted);font-size:.78rem;line-height:1.55}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px}
+.toast{font-size:.82rem;color:var(--ok)}
+.toast:empty{display:none}
+.dt{display:flex;gap:6px}
+.fields label.full{grid-column:1/-1}
+.dt input{flex:1;min-width:0}
+.dt button{flex:none;padding:0 10px;min-height:42px}
+.pick{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.logp{display:flex;flex-direction:column;gap:12px}
+.logp h2{font-size:1rem;margin:0}
+.loghead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.tblwrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:10px}
+table.log{border-collapse:collapse;font-size:.8rem;white-space:nowrap}
+table.log th,table.log td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+table.log th{position:sticky;top:0;background:var(--accent-soft);color:var(--ink);font-weight:600;z-index:1}
+table.log td{font-family:ui-monospace,"Roboto Mono",monospace}
+table.log td:first-child,table.log th:first-child{position:sticky;left:0;background:var(--panel);text-align:left;z-index:2}
+table.log th:first-child{background:var(--accent-soft);z-index:3}
+table.log td.z{color:var(--muted)}
+table.log tbody tr{cursor:pointer}
+table.log tbody tr:hover td,table.log tbody tr:active td{background:var(--accent-soft)}
+table.log td.neg{color:var(--buy)} table.log td.pos{color:var(--ok)}
+table.log button.del{padding:2px 7px;font-size:.75rem}
+.empty{color:var(--muted);font-size:.88rem;margin:0}
+label{position:relative}
+label .auto{position:absolute;right:2px;top:0;font-size:.7rem;font-weight:600;color:var(--ok);background:var(--ok-soft);padding:0 6px;border-radius:999px;line-height:1.5}
+label .auto:empty{display:none}
+#fillDetail{font-family:ui-monospace,"Roboto Mono",monospace;font-size:.78rem}
+#fillDetail:empty{display:none}
+.sync{border:1px solid var(--line);border-radius:10px;padding:12px}
+.sync summary{font-weight:600;color:var(--ink)}
+.sync .fields{margin-bottom:10px}
+.sstat{font-size:.82rem;padding:6px 10px;border-radius:8px;background:var(--bg);color:var(--muted)}
+.sstat.ok{background:var(--ok-soft);color:var(--ok)} .sstat.bad{background:var(--warn-soft);color:var(--warn)}
+
+html[data-locked="1"] .wrap{visibility:hidden}
+.plbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:4px 0 10px;background:var(--panel);display:grid;gap:6px}
+.plbox .pl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline}
+.plbox .pl span{font-size:.85rem;color:var(--muted)}.plbox .pl b{font-size:1.05rem;text-align:right}
+.plbox .pl small{font-size:.75rem}
+
+#lockScr{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+html[data-locked="1"] #lockScr{display:flex}
+#lockScr img{width:72px;height:72px;border-radius:17px}
+#lockScr .lt{font-size:1.1rem;font-weight:700}
+#lockScr .lm{color:var(--muted);font-size:.88rem;min-height:1.3em;text-align:center}
+.dots{display:flex;gap:14px}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--accent)}.dots i.on{background:var(--accent)}
+.dots.shake{animation:sh .35s}@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px}
+.pad button{height:72px;border-radius:50%;font-size:1.4rem;font-weight:600;background:var(--panel)}
+.pad button.ghost{border-color:transparent;background:transparent;font-size:1rem}
+#lockScr .forgot{background:none;border:0;color:var(--muted);font-size:.82rem;text-decoration:underline}
+dialog#lockDlg{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);max-width:340px;width:calc(100% - 32px);padding:18px}
+dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
+#lockDlg h3{margin:0 0 6px;font-size:1.05rem}#lockDlg p{margin:0 0 10px;color:var(--muted);font-size:.85rem}
+#lockDlg label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;margin-bottom:10px}
+#lockDlg input[type=password]{font:inherit;font-size:1.1rem;letter-spacing:.3em;padding:8px 10px;border:1px solid var(--fieldline);border-radius:8px;background:var(--field);color:var(--ink)}
+#lockDlg .chk{flex-direction:row;align-items:center;gap:8px}
+#lockDlg .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:6px}
+#lockDlg .err{color:var(--buy);font-size:.82rem;min-height:1.2em}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>SOXL 예약주문 계산기</h1>
+      <p class="sub">LOC(지정가 종가) 주문 · 매일 전일종가만 넣으면 체결·잔금·보유·이평선이 자동으로 계산됩니다</p>
+    </div>
+    <div class="tools">
+      <button id="btnLock" type="button">🔒 잠금 설정</button>
+      <button id="btnClear" type="button">전체 비우기</button>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist"><button type="button" role="tab" id="tabIn" aria-selected="true">입력</button><button type="button" role="tab" id="tabOut" aria-selected="false">주문 결과</button><button type="button" role="tab" id="tabLog" aria-selected="false">기록</button></div>
+  <div class="grid">
+    <form class="panel inputs" id="form" autocomplete="off">
+      <section class="sec">
+        <h2><span class="n">1</span>오늘 상태</h2>
+        <div class="fields">
+          <label class="full">주문일 (미국 날짜)<span class="dt"><input id="date" class="dtin" type="text" inputmode="numeric" placeholder="2026.09.28" maxlength="10"><button type="button" id="btnPick" aria-label="달력에서 고르기">📅</button></span><input id="datePick" class="pick" type="date" tabindex="-1" aria-hidden="true"></label>
+          <label>전일종가 <span class="auto" id="pcAuto"></span><input id="pc" type="text" inputmode="decimal" data-num></label>
+          <label>MA20 (20일선) <span class="auto" id="maAuto"></span><input id="ma" type="text" inputmode="decimal" data-num></label>
+          <label>MA120 (120일선) <span class="auto" id="ma120Auto"></span><input id="ma120" type="text" inputmode="decimal" data-num></label>
+          <label>잔금 <span class="auto" id="cashAuto"></span><input id="cash" type="text" inputmode="decimal" data-num></label>
+          <label>누적보유수 <span class="auto" id="holdAuto"></span><input id="hold" type="text" inputmode="numeric" data-num></label>
+          <label>평단 <span class="auto" id="avgAuto"></span><input id="avg" type="text" inputmode="decimal" data-num></label>
+          <label>사이클차수<input id="cyc" type="text" inputmode="numeric" data-num></label>
+          <label>사이클시드<input id="seed" type="text" inputmode="decimal" data-num></label>
+          <label class="full">주문 배수 (실제 주문 개수 = 계산 개수 × 배수, 소수점 버림)<input id="mult" type="text" inputmode="decimal" data-num placeholder="1"></label>
+          <input type="hidden" id="pcash"><input type="hidden" id="phold"><input type="hidden" id="pseed"><input type="hidden" id="pavg"><input type="hidden" id="pcyc"><input type="hidden" id="man">
+        </div>
+      </section>
+
+      <div class="divider"></div>
+      <section class="sec">
+        <h2><span class="n">2</span>전일 체결 (LOC 자동 판정)</h2>
+        <p class="hint">어제 주문을 전일종가와 비교해 자동으로 판정합니다 (매수: 예약가 ≥ 종가, 매도: 예약가 ≤ 종가, 체결가 = 종가). 증권사 체결 내역과 다를 때(일부 체결 등)만 개수를 고치세요.</p>
+        <div class="fields">
+          <label>전일매수개수 <span class="auto" id="bnAuto"></span><input id="bn" type="text" inputmode="numeric" data-num></label>
+          <label>전일매도개수 <span class="auto" id="snAuto"></span><input id="sn" type="text" inputmode="numeric" data-num></label>
+        </div>
+        <p class="hint" id="fillDetail"></p>
+      </section>
+
+      <div class="divider"></div>
+      <section class="sec">
+        <h2><span class="n">3</span>전일에 걸었던 예약주문</h2>
+        <p class="hint">어제 이 계산기로 낸 주문. 결과 카드의 "내일 준비" 버튼을 쓰면 자동으로 채워집니다.</p>
+        <div class="pairs">
+          <div class="pair"><label>매수예약가1<input id="yb1" type="text" inputmode="decimal" data-num></label><label>개수<input id="yq1" type="text" inputmode="numeric" data-num></label></div>
+          <div class="pair"><label>매수예약가2<input id="yb2" type="text" inputmode="decimal" data-num></label><label>개수<input id="yq2" type="text" inputmode="numeric" data-num></label></div>
+          <div class="pair"><label>매도예약가1<input id="ys1" type="text" inputmode="decimal" data-num></label><label>개수<input id="yn1" type="text" inputmode="numeric" data-num></label></div>
+          <div class="pair"><label>매도예약가2<input id="ys2" type="text" inputmode="decimal" data-num></label><label>개수<input id="yn2" type="text" inputmode="numeric" data-num></label></div>
+          <div class="pair"><label>매도예약가3<input id="ys3" type="text" inputmode="decimal" data-num></label><label>개수<input id="yn3" type="text" inputmode="numeric" data-num></label></div>
+        </div>
+      </section>
+
+      <details id="waitBox">
+        <summary>대기 로트 (자동 관리)</summary>
+        <input type="hidden" id="wl">
+        <div id="wlView" class="hint" style="font-size:.85rem;color:var(--muted);padding:8px 2px"></div>
+        <button type="button" id="wlClear" style="font-size:.8rem">대기 로트 비우기</button>
+      </details>
+    </form>
+
+    <aside class="panel result" aria-live="polite">
+      <div class="chips" id="chips"></div>
+      <div class="orders" id="orders"></div>
+      <div id="notes"></div>
+      <div class="kv">
+        <div><span>기준가 V</span><b id="kV">–</b></div>
+        <div><span>현금 사용비율</span><b id="kU">–</b></div>
+        <div><span>1건 주문금액</span><b id="kUnit">–</b></div>
+      </div>
+      <div class="row-actions">
+        <button id="btnCopy" type="button">결과 복사</button>
+        <button id="btnSave" type="button">기록 저장</button>
+        <button id="btnNext" class="primary" type="button">저장하고 내일 준비 →</button>
+      </div>
+      <div class="toast" id="toast"></div>
+      <p class="foot">매일 할 일: 구글 시트 백업이 연결돼 있으면 앱을 열 때 <b>전일종가가 자동으로</b> 채워집니다(새 Apps Script 필요). 자동으로 안 채워지면 장 마감 후 <b>전일종가</b>만 넣으면 전날 기록을 기준으로 어제 주문의 체결, 잔금, 보유수, 평단, 사이클이 자동 계산됩니다. 첫날(기록이 없을 때)만 잔금·보유수·평단을 직접 넣으세요. MA20·MA120은 앱에 들어 있는 SOXL 종가 이력(2026.10.1까지)과 이후 기록의 전일종가로 자동 계산됩니다. 기록을 하루라도 건너뛰면 그 사이 종가가 비어 수동 입력이 필요할 수 있습니다. 결과를 LOC 주문으로 걸고 "저장하고 내일 준비"를 누르면 끝입니다. 초록색 "자동" 표시가 있는 칸도 직접 고칠 수 있습니다.</p>
+      <p class="foot">주문 계산은 연결된 구글 Apps Script(본인 계정)에서 합니다. 인터넷이 없으면 마지막 계산 결과만 볼 수 있습니다.</p>
+    </aside>
+  </div>
+
+  <section class="panel logp" id="logPanel">
+    <div class="loghead">
+      <h2>매매 기록 <span id="logCount" class="chip"></span></h2>
+      <div class="tools">
+        <button type="button" id="btnImport">엑셀 불러오기</button>
+        <button type="button" class="primary" id="btnExport">엑셀로 내보내기</button>
+      </div>
+    </div>
+    <input type="file" id="fileImport" accept=".xlsx,.xls,.csv" hidden>
+    <div class="sstat" id="sStat">구글 시트 백업: 꺼짐</div>
+    <details class="sync" id="syncBox">
+      <summary>구글 시트 자동 백업 설정</summary>
+      <p class="hint" style="margin:0 0 10px;color:var(--muted);font-size:.82rem">설정하면 "기록 저장"·삭제·불러오기 때마다 구글 시트에 자동으로 올라갑니다. 휴대폰을 바꾸거나 앱이 지워져도 아래 두 칸만 다시 넣으면 기록이 돌아옵니다.</p>
+      <div class="fields">
+        <label class="full">웹 앱 URL (https://script.google.com/…/exec)<input id="gUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false"></label>
+        <label class="full">비밀번호 (스크립트의 TOKEN과 같게)<input id="gTok" type="password" autocomplete="off"></label>
+      </div>
+      <div class="tools">
+        <button type="button" class="primary" id="gSave">저장하고 연결</button>
+        <button type="button" id="gPull">시트에서 불러오기</button>
+        <button type="button" id="gPush">전체 다시 올리기</button>
+      </div>
+    </details>
+    <div id="logBody"></div>
+    <p class="foot">열 구성은 원래 기록 엑셀과 같습니다 (A 날짜 ~ V 당일실현, W MA20). 줄을 누르면 그날 내용이 입력 화면으로 불러와집니다. "엑셀 불러오기"로 기존 기록 파일을 넣으면 같은 날짜는 덮어쓰고 나머지는 합칩니다. 구글 시트 백업을 켜 두면 휴대폰이 바뀌어도 기록이 남습니다.</p>
+    <div class="toast" id="toast2"></div>
+  </section>
+</div>
+
+<div class="mbar" id="mbar"><span id="mbarTxt">–</span><button type="button" class="primary" id="mbarBtn">결과 보기</button></div>
+<script>
+const XLSX_SRC='./xlsx.full.min.js';
+(function(){
+  const HOL=new Set(['2025-01-01','2025-01-09','2025-01-20','2025-02-17','2025-04-18','2025-05-26','2025-06-19','2025-07-04','2025-09-01','2025-11-27','2025-12-25','2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25','2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
+    '2027-01-01','2027-01-18','2027-02-15','2027-03-26','2027-05-31','2027-06-18','2027-07-05','2027-09-06','2027-11-25','2027-12-24']);
+  // SOXL 종가 이력 (YYMMDD:종가) — MA20·MA120 자동 계산용. 이후 날짜는 기록의 전일종가로 이어 붙음
+  const PX={"250303":20.51,"250304":20.65,"250305":21.95,"250306":19.23,"250307":20.88,"250310":17.99,"250311":17.41,"250312":18.3,"250313":18.09,"250314":19.8,"250317":20.79,"250318":19.93,"250319":20.38,"250320":19.93,"250321":19.28,"250324":21.0,"250325":20.55,"250326":18.79,"250327":17.76,"250328":16.03,"250331":15.95,"250401":15.95,"250402":16.26,"250403":11.41,"250404":8.73,"250407":9.15,"250408":8.25,"250409":12.77,"250410":9.63,"250411":10.23,"250414":10.47,"250415":10.6,"250416":9.34,"250417":9.2,"250421":8.71,"250422":9.18,"250423":10.29,"250424":12.0,"250425":12.34,"250428":12.29,"250429":11.86,"250430":12.16,"250501":12.1,"250502":13.29,"250505":13.05,"250506":12.64,"250507":13.28,"250508":13.66,"250509":14.11,"250512":17.13,"250513":18.6,"250514":18.84,"250515":18.47,"250516":18.39,"250519":18.06,"250520":17.97,"250521":17.0,"250522":16.51,"250523":15.73,"250527":17.29,"250528":17.04,"250529":17.2,"250530":16.17,"250602":16.9,"250603":18.3,"250604":19.09,"250605":18.81,"250606":19.18,"250609":20.58,"250610":21.89,"250611":21.64,"250612":21.69,"250613":20.04,"250616":21.9,"250617":21.42,"250618":21.61,"250620":21.21,"250623":21.58,"250624":23.95,"250625":24.58,"250626":25.2,"250627":25.11,"250630":25.11,"250701":24.71,"250702":26.05,"250703":26.43,"250707":24.97,"250708":26.37,"250709":26.65,"250710":27.37,"250711":27.29,"250714":26.5,"250715":27.29,"250716":27.03,"250717":27.32,"250718":27.33,"250721":27.5,"250722":26.32,"250723":25.78,"250724":25.62,"250725":25.6,"250728":26.88,"250729":27.03,"250730":27.61,"250731":24.98,"250801":24.08,"250804":25.0,"250805":24.52,"250806":23.99,"250807":25.0,"250808":25.71,"250811":25.61,"250812":28.0,"250813":29.27,"250814":29.42,"250815":27.37,"250818":27.53,"250819":26.24,"250820":25.8,"250821":25.35,"250822":27.45,"250825":27.3,"250826":27.94,"250827":28.18,"250828":28.53,"250829":26.04,"250902":25.25,"250903":24.91,"250904":25.65,"250905":26.45,"250908":27.08,"250909":27.18,"250910":28.6,"250911":29.17,"250912":29.3,"250915":30.0,"250916":30.48,"250917":30.47,"250918":33.64,"250919":33.02,"250922":34.43,"250923":34.3,"250924":34.2,"250925":33.85,"250926":34.02,"250929":34.02,"250930":34.84,"251001":36.86,"251002":39.08,"251003":38.23,"251006":41.71,"251007":38.83,"251008":42.78,"251009":42.24,"251010":34.21,"251013":39.14,"251014":36.63,"251015":39.98,"251016":40.57,"251017":40.29,"251020":42.24,"251021":41.51,"251022":38.39,"251023":41.17,"251024":43.14,"251027":46.84,"251028":46.96,"251029":49.38,"251030":47.39,"251031":47.78,"251103":48.58,"251104":42.8,"251105":46.83,"251106":43.01,"251107":41.74,"251110":44.96,"251111":41.81,"251112":43.71,"251113":39.22,"251114":38.86,"251117":36.84,"251118":34.35,"251119":35.96,"251120":30.81,"251121":31.73,"251124":35.86,"251125":36.17,"251126":39.19,"251128":41.26,"251201":41.31,"251202":43.8,"251203":46.58,"251204":45.16,"251205":46.5,"251208":47.99,"251209":47.79,"251210":49.65,"251211":48.79,"251212":41.71,"251215":41.18,"251216":40.49,"251217":36.01,"251218":38.58,"251219":41.72,"251222":43.26,"251223":43.7,"251224":44.21,"251226":44.21,"251229":43.82,"251230":43.67,"251231":42.03,"260102":47.24,"260105":49.22,"260106":54.01,"260107":52.29,"260108":49.65,"260109":53.95,"260112":54.65,"260113":56.07,"260114":55.38,"260115":58.08,"260116":60.75,"260120":57.94,"260121":63.48,"260122":63.72,"260123":61.6,"260126":60.7,"260127":64.96,"260128":70.09,"260129":70.47,"260130":61.79,"260202":65.2,"260203":61.2,"260204":53.19,"260205":53.25,"260206":61.75,"260209":64.03,"260210":63.34,"260211":68.05,"260212":63.1,"260213":64.59,"260217":64.35,"260218":66.29,"260219":65.23,"260220":67.11,"260223":65.86,"260224":68.53,"260225":71.86,"260226":65.34,"260227":62.77,"260302":62.76,"260303":53.42,"260304":56.62,"260305":54.8,"260306":47.89,"260309":53.32,"260310":54.59,"260311":56.09,"260312":50.28,"260313":50.72,"260316":53.69,"260317":54.95,"260318":54.02,"260319":54.85,"260320":51.14,"260323":53.03,"260324":54.96,"260325":57.04,"260326":48.97,"260327":46.61,"260330":40.62,"260331":47.91,"260401":52.26,"260402":52.75,"260406":54.81,"260407":56.55,"260408":67.5,"260409":71.98,"260410":76.39,"260413":80.56,"260414":85.31,"260415":85.96,"260416":88.37,"260417":94.68,"260420":95.94,"260421":98.09,"260422":105.64,"260423":112.77,"260424":128.32,"260427":123.39,"260428":109.56,"260429":117.97,"260430":126.98,"260501":130.4,"260504":127.55,"260505":144.16,"260506":165.85,"260507":152.1,"260508":176.94,"260511":190.42,"260512":172.52,"260513":184.24,"260514":186.19,"260515":164.18,"260518":151.75,"260519":151.89,"260520":173.2,"260521":178.39,"260522":190.56,"260526":225.79,"260527":217.98,"260528":224.63,"260529":224.34,"260601":227.03,"260602":266.32,"260603":280.54,"260604":262.7,"260605":182.54,"260608":211.44,"260609":201.68,"260610":180.65,"260611":223.99,"260612":234.68,"260615":272.5,"260616":226.19,"260617":233.86,"260618":279.29,"260622":300.77,"260623":231.42,"260624":229.57,"260625":252.61,"260626":215.6,"260629":236.52,"260630":266.71,"260701":217.55,"260702":181.47,"260706":194.65,"260707":165.28,"260708":174.82,"260709":192.45,"260710":192.26,"260713":165.37,"260714":176.66,"260715":165.55,"260716":142.48,"260717":135.47,"260720":136.81,"260721":158.54,"260722":160.99,"260723":157.5,"260724":136.81,"260727":128.15,"260728":109.54,"260729":91.99,"260730":114.72,"260731":114.72,"260803":116.71,"260804":139.9,"260805":132.07,"260806":132.33,"260807":140.25,"260810":130.0,"260811":133.0,"260812":142.16,"260813":145.36,"260814":144.95,"260817":151.53,"260818":129.1,"260819":120.74,"260820":122.21,"260821":120.6,"260824":111.16,"260825":115.67,"260826":116.6,"260827":123.05,"260828":111.34,"260831":112.79,"260901":105.91,"260902":106.35,"260903":106.74,"260904":117.28,"260908":123.27,"260909":125.87,"260910":115.76,"260911":121.82,"260914":101.13,"260915":102.32,"260916":103.97,"260917":114.82,"260918":123.67,"260921":141.93,"260922":151.95,"260923":146.25,"260924":146.33,"260925":151.45,"260928":142.29,"260929":147.0,"260930":147.86,"261001":153.69};
+  const IDS=['date','mult','cyc','avg','seed','cash','hold','pc','ma','ma120','bn','sn','pcash','phold','pseed','pavg','pcyc','man','yb1','yq1','yb2','yq2','ys1','yn1','ys2','yn2','ys3','yn3','wl'];
+  const $=id=>document.getElementById(id);
+  const pn=v=>{const x=parseFloat(String(v==null?'':v).replace(/,/g,''));return isFinite(x)?x:NaN};
+  const num=id=>{const v=pn($(id).value);return isFinite(v)?v:0};
+  const fmtIn=v=>{const x=pn(v);return isFinite(x)?x.toLocaleString('en-US',{maximumFractionDigits:6}):''};
+  const fi=x=>Math.round(x).toLocaleString('en-US');
+  const r2=x=>Math.floor(x*100+0.5)/100;
+  const f2=x=>x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const iso=d=>d.toISOString().slice(0,10);
+  const parse=s=>{const g=String(s||'').replace(/\D/g,'');if(g.length!==8)return null;const d=new Date(g.slice(0,4)+'-'+g.slice(4,6)+'-'+g.slice(6)+'T12:00:00Z');return isNaN(d)?null:d};
+  const dot=d=>iso(d).replace(/-/g,'.');
+  const isTrade=d=>{const w=d.getUTCDay();return w!==0&&w!==6&&!HOL.has(iso(d))};
+  const step=(d,dir)=>{let x=new Date(d);do{x.setUTCDate(x.getUTCDate()+dir)}while(!isTrade(x));return x};
+  const tradingDaysAfter=(a,b)=>{let n=0,x=new Date(a);while(x<b){x.setUTCDate(x.getUTCDate()+1);if(x<=b&&isTrade(x))n++}return n};
+  const isMon=d=>d&&d.getUTCDay()===1;
+
+  const EXAMPLE={date:'2026.08.13',cyc:29,avg:131.782,seed:14467.67,cash:9009.00,hold:43,pc:142.16,ma:'',ma120:'',bn:0,sn:16,
+    yb1:129.72,yq1:8,yb2:132.48,yq2:8,ys1:153.26,yn1:7,ys2:135.42,yn2:8,ys3:133.02,yn3:8};
+
+  let last=null;
+
+  function isMan(id){return ($('man').value||'').split(',').includes(id)}
+  function setAuto(id,v,tag){const el=$(id+'Auto');if(isMan(id)){if(el)el.textContent='';return}$(id).value=fmtIn(v);if(el)el.textContent=tag||'자동'}
+  let PXX={};try{PXX=JSON.parse(localStorage.getItem('soxl-px')||'{}')||{}}catch(e){}
+  function closeOf(k,mp){if(mp[k]>0)return mp[k];if(PXX[k]>0)return PXX[k];const x=PX[k.slice(2).replace(/-/g,'')];return x>0?x:0}
+  function autoMA(D,pc,N){
+    // 전일(=주문일 직전 거래일) 종가까지 N일 평균. 종가: 오늘 입력값 → 기록의 전일종가 → 내장 이력 순
+    if(!D||!(pc>0))return null;
+    const mp={};if(typeof LOG!=='undefined')LOG.forEach(x=>{const d=parse(x[0]);if(d&&x[14]>0)mp[iso(step(d,-1))]=x[14]});
+    let d=step(D,-1);mp[iso(d)]=pc;let s=0;
+    for(let i=0;i<N;i++){const c=closeOf(iso(d),mp);if(!(c>0))return null;s+=c;d=step(d,-1)}
+    return s/N;
+  }
+  function getWL(){try{const a=JSON.parse($('wl').value||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+  function showWL(){const a=getWL();$('wlView').textContent=a.length?a.map((x,i)=>(i+1)+') '+f2(x.p)+' × '+x.q+'주 · 마지막 주문일 '+String(x.d).replace(/-/g,'.')).join('   '):'지금 대기 중인 로트가 없습니다.';$('waitBox').querySelector('summary').textContent='대기 로트 (자동 관리 · '+a.length+'개)';if(a.length!==showWL.n){$('waitBox').open=a.length>0;showWL.n=a.length}}
+  const YIDS=['yb1','yq1','yb2','yq2','ys1','yn1','ys2','yn2','ys3','yn3'];
+  function avgFromLog(dISO){
+    // dISO 기록까지, 가장 최근 사이클 시작(보유 0) 이후의 체결을 다시 계산해 평단 복원
+    const R=LOG.filter(x=>x[0]<=dISO);let i=R.length-1;
+    while(i>0&&R[i-1][20]>0)i--;
+    let a=0,h=i>0?R[i-1][20]:0;
+    for(let k=i;k<R.length;k++){const r=R[k],bp=r[16]||r[14],bn=r[17]||0,sn=r[19]||0,nh=r[20]||0;
+      a=nh>0?(a*Math.max(0,h-sn)+bp*bn)/nh:0;h=nh}
+    return a;
+  }
+  function getBase(D){
+    // 전날 기록(있으면) → 없으면 '내일 준비' 때 저장해 둔 값
+    if(D&&typeof LOG!=='undefined'){const pr=prevRow(iso(D));
+      if(pr)return {src:'rec',d:pr[0],cash:pr[3],hold:pr[20],avg:(pr[15]>0||!(pr[20]>0))?pr[15]:avgFromLog(pr[0]),seed:pr[2],cyc:pr[1],y:pr.slice(4,14)}}
+    const ph=$('phold').value,pca=$('pcash').value;
+    if(ph!==''&&pca!=='')return {src:'prep',cash:parseFloat(pca),hold:parseInt(ph,10),avg:parseFloat($('pavg').value)||0,
+      seed:parseFloat($('pseed').value)||0,cyc:parseInt($('pcyc').value,10)||0,y:null};
+    return null;
+  }
+  function autoFill(){
+    const D=parse($('date').value), pc=num('pc');
+    ['maAuto','ma120Auto','cashAuto','holdAuto','avgAuto','bnAuto','snAuto'].forEach(k=>$(k).textContent='');$('fillDetail').textContent='';
+    const B=getBase(D);
+    if(B&&B.y&&!YIDS.some(isMan))YIDS.forEach((id,i)=>$(id).value=fmtIn(B.y[i]||0));
+    if(!(pc>0))return;
+    const m=autoMA(D,pc,20); if(m) setAuto('ma',Math.round(m*10000)/10000,'자동');
+    const m2=autoMA(D,pc,120); if(m2) setAuto('ma120',Math.round(m2*10000)/10000,'자동');
+    const Y=[['매수1',num('yb1'),num('yq1'),'b'],['매수2',num('yb2'),num('yq2'),'b'],['매도1',num('ys1'),num('yn1'),'s'],['매도2',num('ys2'),num('yn2'),'s'],['매도3',num('ys3'),num('yn3'),'s']];
+    let bn=0,sn=0;const det=[];
+    Y.forEach(([n,p,q,sd])=>{if(!(p>0&&q>0))return;const ok=sd==='b'?p>=pc:p<=pc;if(ok){sd==='b'?bn+=q:sn+=q}det.push(n+(ok?' ✓'+q:' ✗'))});
+    if(det.length){$('fillDetail').textContent='종가 '+f2(pc)+' 기준: '+det.join(' · ');setAuto('bn',bn);setAuto('sn',sn)}
+    if(!B)return;
+    const b=num('bn'),s=Math.min(num('sn'),B.hold+num('bn'));
+    const cash=Math.round((B.cash-b*pc+s*pc)*100)/100, hold=B.hold+b-s;
+    const avg=hold>0?((B.avg||0)*(B.hold-s)+b*pc)/hold:0;
+    setAuto('cash',cash);setAuto('hold',hold);
+    if(!((B.hold-s)>0&&!(B.avg>0)))setAuto('avg',Math.round(avg*1000)/1000);
+    const newCyc=hold===0&&B.hold>0;
+    if(!isMan('seed')&&B.seed>0)$('seed').value=fmtIn(newCyc?cash:B.seed);
+    if(!isMan('cyc')&&B.cyc>0)$('cyc').value=fmtIn(B.cyc+(newCyc?1:0));
+    $('fillDetail').textContent+=(B.src==='rec'?'  (기준: '+B.d.replace(/-/g,'.')+' 기록)':'');
+    if(newCyc)$('fillDetail').textContent+='  → 전량 매도, 새 사이클 '+(B.cyc+1)+'차 시작 (시드 = 잔금)';
+  }
+  // 주문 계산은 구글 Apps Script(본인 계정)에서 함 — 앱에는 공식이 없음
+  let cseq=0,ctimer=null;const CC={};try{Object.assign(CC,JSON.parse(localStorage.getItem('soxl-cc')||'{}'))}catch(e){}
+  function calc(){
+    autoFill();showWL();
+    const D=parse($('date').value), seed=num('seed'), pc=num('pc'), hold=Math.round(num('hold'));
+    if(!(seed>0&&pc>0)){last=null;render(null,[],['사이클시드와 전일종가를 넣으면 계산이 시작됩니다.']);mbar();return}
+    const req={D:D?iso(D):'',mon:isMon(D),pmon:D?isMon(step(D,-1)):false,seed,cash:num('cash'),hold,pc,ma:num('ma'),ma120:num('ma120'),bn:num('bn'),sn:num('sn'),
+      ys:[[num('ys1'),num('yn1')],[num('ys2'),num('yn2')],[num('ys3'),num('yn3')]],yb1:num('yb1'),yq1:num('yq1'),yb2:num('yb2'),yq2:num('yq2'),
+      wl:getWL().map(w=>{const wd=parse(w.d);return {p:w.p,q:w.q,d:w.d,k:wd&&D?tradingDaysAfter(wd,D):null,wmon:isMon(wd)}})};
+    const key=JSON.stringify(req);
+    if(CC.k===key&&CC.r){show(CC.r,D);return}
+    last=null;const my=++cseq;
+    if(!sOn()){render(null,[],['주문 계산은 구글 Apps Script에서 합니다. 아래 "구글 시트 자동 백업 설정"에 웹 앱 URL과 비밀번호를 넣어 연결하세요.']);mbar();return}
+    $('orders').innerHTML='<div class="note">계산 중…</div>';document.body.dataset.calc='busy';
+    clearTimeout(ctimer);ctimer=setTimeout(async()=>{
+      try{const j=await api({op:'calc',in:req});if(my!==cseq)return;
+        CC.k=key;CC.r=j.r;try{localStorage.setItem('soxl-cc',JSON.stringify(CC))}catch(e){}
+        show(j.r,D)}
+      catch(e){if(my!==cseq)return;render(null,[],['계산 서버에 연결하지 못했습니다 ('+e.message+'). 인터넷 연결을 확인하고 다시 여세요.']);mbar();document.body.dataset.calc='err'}
+    },250);
+  }
+  function show(r,D){
+    const notes=(r.notes||[]).slice(),chips=(r.chips||[]).slice();
+    if(!r.o){last=null;render(null,chips,notes);mbar();document.body.dataset.calc='ok';return}
+    if(MUL()!==1)chips.push(['warn','주문 ×'+MUL()+'배']);
+    if(Math.round(num('hold'))>0&&!(num('avg')>0)){notes.push({t:'평단을 넣어 주세요 (보유 중이면 필수). 전날 기록이 있으면 자동으로 채워집니다.'});$('avg').classList.add('needs')}
+    if(!D)notes.push({t:'주문일을 넣으면 대기 로트 계산이 정확해집니다.'});
+    if(num('cash')>num('seed')+0.005)notes.push({t:'잔금이 사이클시드보다 큽니다. 입력값을 확인하세요.'});
+    last={o:r.o,start:r.start,D};
+    $('kV').textContent=f2(r.V);$('kU').textContent=(r.u*100).toFixed(1)+'%';$('kUnit').textContent=f2(r.U);
+    render(r.o,chips,notes);mbar();document.body.dataset.calc='ok';
+  }
+
+  const MUL=()=>{const m=num('mult');return m>0?m:1};
+  const sq=q=>Math.floor(q*MUL()+1e-9);
+  function row(side,label,price,q0,why,all){
+    const qty=sq(q0),m=MUL();
+    const off=!(price>0&&qty>0);
+    if(m!==1&&!off)why+=` <br><span style="opacity:.8">기준 ${fi(q0)}주 × ${m}${all?' · 실제 계좌 보유 전량 매도':''}</span>`;
+    else if(all&&!off)why+=' · 보유 전량';
+    return `<div class="ord ${side}${off?' off':''}"><span class="tag ${side}">${label}</span><span class="why">${why}</span>
+      <span class="num"><span class="p">${off?'주문 없음':f2(price)}</span>${off?'':`<br><span class="q">× ${fi(qty)}주</span>`}</span></div>`;
+  }
+  function render(o,chips,notes){
+    $('chips').innerHTML=chips.map(([c,t])=>`<span class="chip ${c}">${t}</span>`).join('');
+    $('notes').innerHTML=notes.map((n,i)=>`<div class="note">${n.t||n}${n.fix?`<br><button type="button" data-fix="${n.fix}">사이클시드 = 잔금으로 바꾸기</button>`:''}</div>`).join('');
+    const nb=$('notes').querySelector('[data-fix]'); if(nb)nb.onclick=()=>{$('seed').value=$('cash').value;save();calc()};
+    if(!o){$('orders').innerHTML='';['kV','kU','kUnit'].forEach(k=>$(k).textContent='–');return}
+    $('orders').innerHTML=
+      row('b','매수1',o.b1,o.q1,last.start?'시작일: 종가에 무조건 매수':'')+
+      row('b','매수2',o.b2,o.q2,'')+
+      row('s','매도1',o.s1[0],o.s1[1],o.s1[2]||'두 번째 로트')+
+      row('s','매도2',o.s2[0],o.s2[1],o.s2[2]||'최신 로트')+
+      row('s','매도3',o.s3[0],o.s3[1],last.start?'사이클 시작일은 없음':'나머지 물량',o.s3all);
+  }
+
+  function setTab(t){document.body.dataset.tab=t;$('tabIn').setAttribute('aria-selected',t==='in');$('tabOut').setAttribute('aria-selected',t==='out');$('tabLog').setAttribute('aria-selected',t==='log');window.scrollTo(0,0)}
+  function mbar(){if(!last){$('mbarTxt').textContent='입력값을 채워 주세요';return}const o=last.o;const n=[o.s1,o.s2,o.s3].filter(x=>x[0]>0&&x[1]>0).length;
+    $('mbarTxt').innerHTML='매수 '+f2(o.b1)+'×'+fi(sq(o.q1))+' · '+f2(o.b2)+'×'+fi(sq(o.q2))+'<br>매도 '+n+'건'+(MUL()!==1?' · 배수 '+MUL():'')}
+  function save(){try{const s={};IDS.forEach(i=>s[i]=$(i).value);localStorage.setItem('soxl-ma20',JSON.stringify(s))}catch(e){}}
+  function norm(el){if(el.dataset&&el.dataset.num!==undefined)el.value=fmtIn(el.value);else if(el.classList&&el.classList.contains('dtin')){const d=parse(el.value);if(d)el.value=dot(d)}}
+  function normAll(){IDS.forEach(i=>norm($(i)))}
+  function load(){try{const s=JSON.parse(localStorage.getItem('soxl-ma20')||'null');if(s){IDS.forEach(i=>{if(s[i]!=null)$(i).value=s[i]});normAll();return true}}catch(e){}return false}
+  function fill(obj){IDS.forEach(i=>{if(i==='mult'&&obj.mult==null)return;$(i).value=obj[i]!=null?obj[i]:''});normAll();document.querySelectorAll('input.needs').forEach(x=>x.classList.remove('needs'))}
+  function toast(t){['toast','toast2'].forEach(k=>$(k).textContent=t);clearTimeout(toast._t);toast._t=setTimeout(()=>['toast','toast2'].forEach(k=>$(k).textContent=''),3200)}
+
+  const AUTO=['ma','ma120','cash','hold','avg','bn','sn','seed','cyc',...YIDS];
+  $('form').addEventListener('input',e=>{const id=e.target.id;if(id==='mult')setTimeout(renderLog,0);if(id==='pc'&&e.isTrusted)$('pcAuto').textContent='';if(e.target.classList)e.target.classList.remove('needs');
+    if(AUTO.includes(id)){const m=new Set(($('man').value||'').split(',').filter(Boolean));if(e.target.value.trim()==='')m.delete(id);else m.add(id);$('man').value=[...m].join(',')}
+    if(id==='date')$('man').value='';
+    if(id==='pc'){const m=new Set(($('man').value||'').split(',').filter(Boolean));['ma','ma120','bn','sn','cash','hold','avg','seed','cyc'].forEach(x=>m.delete(x));$('man').value=[...m].join(',')}
+    save();calc()});
+  $('form').addEventListener('submit',e=>e.preventDefault());
+  $('form').addEventListener('focusout',e=>{norm(e.target);save()});
+  $('btnPick').onclick=()=>{const p=$('datePick'),d=parse($('date').value);p.value=d?iso(d):'';try{p.showPicker()}catch(e){p.focus();p.click()}};
+  $('datePick').addEventListener('change',e=>{const d=parse(e.target.value);if(d){$('date').value=dot(d);$('date').classList.remove('needs');save();calc()}});
+  $('wlClear').onclick=()=>{if(!confirm('대기 로트를 모두 비울까요?'))return;$('wl').value='[]';save();calc()};
+  $('btnClear').onclick=()=>{fill({});save();calc();toast('입력값을 비웠습니다.')};
+  $('btnCopy').onclick=()=>{
+    if(!last)return;const o=last.o,d=last.D?dot(last.D):'';
+    const L=[`SOXL LOC 예약주문 ${d}`+(MUL()!==1?` (배수 ${MUL()})`:''),`매수1 ${f2(o.b1)} × ${fi(sq(o.q1))}`,`매수2 ${f2(o.b2)} × ${fi(sq(o.q2))}`];
+    [['매도1',o.s1],['매도2',o.s2],['매도3',o.s3]].forEach(([n,s])=>L.push(s[0]>0&&sq(s[1])>0?`${n} ${f2(s[0])} × ${fi(sq(s[1]))}`+(n==='매도3'&&o.s3all?' (보유 전량)':''):`${n} 없음`));
+    const txt=L.join('\n');
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(()=>toast('주문 내용을 복사했습니다.'),()=>toast(txt.replace(/\n/g,' · ')))}else toast(txt.replace(/\n/g,' · '));
+  };
+  $('btnNext').onclick=()=>{
+    if(!last)return;if(!saveRow(true))return;const o=last.o;
+    const set=(id,v)=>{$(id).value=fmtIn(v>0?v:0)};
+    set('yb1',o.b1);set('yq1',o.q1);set('yb2',o.b2);set('yq2',o.q2);
+    set('ys1',o.s1[0]);set('yn1',o.s1[1]);set('ys2',o.s2[0]);set('yn2',o.s2[1]);set('ys3',o.s3[0]);set('yn3',o.s3[1]);
+    $('wl').value=JSON.stringify(o.waitNext||[]);showWL();
+    if(last.D)$('date').value=dot(step(last.D,1));
+    $('pcash').value=String(num('cash'));$('phold').value=String(Math.round(num('hold')));$('pseed').value=String(num('seed'));$('pavg').value=String(num('avg'));$('pcyc').value=String(Math.round(num('cyc')));$('man').value='';
+    ['pc','ma','ma120','bn','sn'].forEach(i=>$(i).value='');
+    $('pc').classList.add('needs');
+    save();calc();toast('저장하고 다음 거래일로 넘겼습니다. 장 마감 후 전일종가만 넣으세요.');setTimeout(autoClose,500);
+    setTab('in');$('pc').focus();
+  };
+
+
+  /* ===== 매매 기록 ===== */
+  const COLS=['날짜','사이클차수','사이클시드','잔금','매수예약가1','매수예약1개수','매수예약가2','매수예약2개수','매도예약가1','매도예약1개수','매도예약가2','매도예약가2개수','매도예약가3','매도예약가3개수','전일종가','전일평단','전일매수체결가','전일매수개수','전일매도체결가','전일매도개수','누적보유수','당일실현','MA20'];
+  const QTY=new Set([5,7,9,11,13,17,19,20]);
+  const LKEY='soxl-ma20-log';
+  let LOG=[];
+  function lload(){try{LOG=JSON.parse(localStorage.getItem(LKEY)||'[]')||[]}catch(e){LOG=[]}}
+  function lsave(){try{localStorage.setItem(LKEY,JSON.stringify(LOG));return true}catch(e){toast('저장 공간에 쓰지 못했습니다. 엑셀로 내보내 백업하세요.');return false}}
+  function lsort(){LOG.sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0)}
+  function prevRow(dISO){let r=null;for(const x of LOG){if(x[0]<dISO)r=x}return r}
+  const rr=(x,n)=>Math.round(x*Math.pow(10,n))/Math.pow(10,n);
+
+  function saveRow(quiet){
+    if(!last){toast('계산 결과가 없어 저장하지 못했습니다.');return false}
+    const D=last.D;if(!D){toast('주문일을 넣어야 저장할 수 있습니다.');$('date').focus();return false}
+    const dI=iso(D),o=last.o,hold=Math.round(num('hold'));
+    const bn=num('bn'),sn=num('sn'),bp=bn>0?num('pc'):0,sp=sn>0?num('pc'):0;
+    const pr=prevRow(dI);
+    let cyc=Math.round(num('cyc'));
+    if(last.start&&pr&&pr[20]>0&&pr[1]===cyc){cyc=cyc+1;$('cyc').value=fmtIn(cyc)}
+    if(!cyc&&pr)cyc=last.start&&pr[20]>0?pr[1]+1:pr[1];
+    if(cyc&&!num('cyc'))$('cyc').value=fmtIn(cyc);
+    const B=getBase(D),pa=B?B.avg:0,noavg=sn>0&&!(pa>0);
+    const real=sn>0&&pa>0?rr(sn*(sp-pa),2):0;
+    const avgOut=hold>0?rr(num('avg'),3):0;
+    const row=[dI,cyc||0,num('seed'),num('cash'),o.b1,o.q1,o.b2,o.q2,o.s1[0]||0,o.s1[1]||0,o.s2[0]||0,o.s2[1]||0,o.s3[0]||0,o.s3[1]||0,num('pc'),avgOut,bp,bn,sp,sn,hold,real,num('ma')];
+    const i=LOG.findIndex(x=>x[0]===dI);
+    if(i>=0)LOG[i]=row;else LOG.push(row);
+    lsort();if(!lsave())return false;renderLog();save();push({op:'put',rows:[row]});
+    if(!quiet)toast(dot(D)+' 기록을 '+(i>=0?'덮어썼습니다':'저장했습니다')+' (총 '+LOG.length+'일)'+(noavg?' · 전날 평단이 없어 당일실현은 0으로 넣었습니다.':''));
+    return true;
+  }
+
+  function cell(v,j){
+    if(j===0)return `<td>${v.replace(/-/g,'.')}</td>`;
+    if(j===1)return `<td>${v?v+'차':''}</td>`;
+    if(!v)return `<td class="z">0</td>`;
+    if(j===21)return `<td class="${v<0?'neg':'pos'}">${f2(v)}</td>`;
+    if(QTY.has(j))return `<td>${fi(v)}</td>`;
+    if(j===15)return `<td>${v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:3})}</td>`;
+    return `<td>${f2(v)}</td>`;
+  }
+  function renderLog(){
+    $('logCount').textContent=LOG.length+'일';
+    if(!LOG.length){$('logBody').innerHTML='<p class="empty">아직 저장된 기록이 없습니다. 주문 결과에서 "기록 저장"을 누르거나, 기존 기록 엑셀을 불러오세요.</p>';return}
+    // 누적 실현손익: 가장 최근에 1차로 시작한 지점부터 합산 (1차로 돌아가면 초기화)
+    let st=0;for(let k=LOG.length-1;k>=0;k--){if(+LOG[k][1]===1&&(k===0||+LOG[k-1][1]!==1)){st=k;break}}
+    const tot=LOG.slice(st).reduce((a,x)=>a+(x[21]||0),0),m=MUL();
+    const cl=v=>`style="color:var(--${v<0?'buy':'ok'})"`;
+    const plBox=`<div class="plbox"><div class="pl"><span>누적 실현손익<br><small>${LOG[st]?LOG[st][0].replace(/-/g,'.')+(+LOG[st][1]===1?' (1차)부터':' (첫 기록 · '+LOG[st][1]+'차)부터'):''}</small></span><b ${cl(tot)}>${f2(tot)}</b></div><div class="pl"><span>배수 적용 손익 <small>(×${m})</small></span><b ${cl(tot*m)}>${f2(tot*m)}</b></div></div>`;
+    const rows=LOG.slice().reverse().map(x=>`<tr data-row="${x[0]}">${x.map(cell).join('')}<td><button type="button" class="del" data-d="${x[0]}" aria-label="${x[0]} 삭제">삭제</button></td></tr>`).join('');
+    $('logBody').innerHTML=`${plBox}<p class="empty">최근 날짜가 위에 있습니다</p><div class="tblwrap"><table class="log"><thead><tr>${COLS.map(c=>`<th>${c}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  function loadRow(d){
+    const r=LOG.find(x=>x[0]===d);if(!r)return;const pr=prevRow(d);
+    const g=(k,v)=>{$(k).value=fmtIn(v)};
+    $('date').value=d.replace(/-/g,'.');g('cyc',r[1]);g('seed',r[2]);g('cash',r[3]);g('pc',r[14]);g('avg',r[15]);g('bn',r[17]);g('sn',r[19]);g('hold',r[20]);
+    if(r[22]>0)g('ma',r[22]);else $('ma').value='';
+    YIDS.forEach((id,i)=>g(id,pr?pr[4+i]:0));
+    $('man').value=['cash','hold','avg','bn','sn','seed','cyc',...YIDS].join(',');
+    document.querySelectorAll('input.needs').forEach(x=>x.classList.remove('needs'));
+    save();calc();setTab('in');window.scrollTo(0,0);
+    toast(d.replace(/-/g,'.')+' 기록을 불러왔습니다. 고친 뒤 "기록 저장"을 누르면 그 날짜에 덮어씁니다.');
+  }
+  $('logBody').addEventListener('click',e=>{
+    if(!e.target.closest('button.del')){const tr=e.target.closest('tr[data-row]');if(tr)loadRow(tr.dataset.row);return}
+    const b=e.target.closest('button.del');const d=b.dataset.d;
+    if(b.dataset.arm!=='1'){b.dataset.arm='1';b.textContent='한번 더';setTimeout(()=>{if(b.isConnected){b.dataset.arm='';b.textContent='삭제'}},2500);return}
+    LOG=LOG.filter(x=>x[0]!==d);lsave();renderLog();push({op:'del',dates:[d]});toast(d.replace(/-/g,'.')+' 기록을 지웠습니다.')});
+  $('btnSave').onclick=()=>saveRow(false);
+
+  function needX(){return new Promise((res,rej)=>{if(window.XLSX)return res(window.XLSX);const sc=document.createElement('script');sc.src=XLSX_SRC;sc.onload=()=>res(window.XLSX);sc.onerror=()=>rej();document.head.appendChild(sc)})}
+  $('btnExport').onclick=async()=>{
+    if(!LOG.length){toast('내보낼 기록이 없습니다.');return}
+    let X;try{X=await needX()}catch(e){toast('엑셀 모듈을 불러오지 못했습니다. 인터넷 연결 후 다시 눌러 주세요.');return}
+    const aoa=[COLS].concat(LOG.map(x=>{const r=x.slice();const g=r[0].split('-');r[0]=Date.UTC(+g[0],+g[1]-1,+g[2])/864e5+25569;r[1]=r[1]?r[1]+'차':'';return r}));
+    const ws=X.utils.aoa_to_sheet(aoa);
+    for(let i=1;i<aoa.length;i++)for(let j=0;j<COLS.length;j++){const a=X.utils.encode_cell({r:i,c:j});const c=ws[a];if(!c)continue;
+      if(j===0){c.z='yyyy.mm.dd'}else if(j>1){c.z=QTY.has(j)?'#,##0':(j===15?'#,##0.000':'#,##0.00')}}
+    ws['!cols']=COLS.map((c,j)=>({wch:j===0?11:Math.max(9,c.length*2)}));
+    ws['!freeze']={xSplit:1,ySplit:1};
+    const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'기록');
+    const t=new Date(),fn='SOXL_record_'+iso(new Date(t.getTime()-t.getTimezoneOffset()*60000)).replace(/-/g,'')+'.xlsx';
+    const blob=new Blob([X.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+    toast('엑셀 파일을 내려받았습니다 ('+LOG.length+'일).');
+  };
+  $('btnImport').onclick=()=>$('fileImport').click();
+  $('fileImport').onchange=async e=>{
+    const f=e.target.files[0];e.target.value='';if(!f)return;
+    let X;try{X=await needX()}catch(er){toast('엑셀 모듈을 불러오지 못했습니다. 인터넷 연결 후 다시 눌러 주세요.');return}
+    try{
+      const wb=X.read(await f.arrayBuffer(),{cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
+      const A=X.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+      let n=0;
+      for(let i=1;i<A.length;i++){const r=A[i];if(!r||r[0]==null)continue;
+        let d=r[0];if(typeof d==='number'){d=new Date(Math.round((d-25569)*864e5))}else if(!(d instanceof Date)){d=parse(d)}
+        if(!d||isNaN(d))continue;
+        const dI=new Date(d.getTime()+12*3600e3).toISOString().slice(0,10);
+        const row=[dI,Math.round(pn(String(r[1]||'').replace(/\D/g,'')))||0];
+        for(let j=2;j<COLS.length;j++){const v=pn(r[j]);row.push(isFinite(v)?v:0)}
+        const k=LOG.findIndex(x=>x[0]===dI);if(k>=0)LOG[k]=row;else LOG.push(row);n++}
+      lsort();lsave();renderLog();push({op:'put',rows:LOG});toast(n+'일치 기록을 불러왔습니다 (총 '+LOG.length+'일).');
+    }catch(er){toast('파일을 읽지 못했습니다. 원래 기록 엑셀(첫 시트, A열 날짜)인지 확인하세요.')}
+  };
+  lload();renderLog();
+
+  /* ===== 구글 시트 백업 ===== */
+  const SKEY='soxl-ma20-sync';
+  const SYNC={url:'',token:'',dirty:false,last:''};
+  try{Object.assign(SYNC,JSON.parse(localStorage.getItem(SKEY)||'{}'))}catch(e){}
+  const ssave=()=>{try{localStorage.setItem(SKEY,JSON.stringify(SYNC))}catch(e){}};
+  const sOn=()=>/^https:\/\/script\.google(usercontent)?\.com\//.test(SYNC.url)&&!!SYNC.token;
+  function sstat(err){const el=$('sStat');
+    if(!sOn()){el.className='sstat';el.textContent='구글 시트 백업: 꺼짐 · 아래 설정을 열어 연결하세요';return}
+    if(err&&!SYNC.dirty){el.className='sstat bad';el.textContent='구글 시트 백업: 연결 실패 ('+err+')';return}
+    if(SYNC.dirty){el.className='sstat bad';el.textContent='구글 시트 백업: 올리지 못한 기록이 있습니다'+(err?' ('+err+')':'')+' · 인터넷 연결 후 자동으로 다시 올립니다';return}
+    el.className='sstat ok';el.textContent='구글 시트 백업: 연결됨'+(SYNC.last?' · 마지막 '+SYNC.last:'');}
+  async function api(body){
+    let r;
+    if(body)r=await fetch(SYNC.url,{method:'POST',body:JSON.stringify(Object.assign({token:SYNC.token},body))});
+    else r=await fetch(SYNC.url+(SYNC.url.indexOf('?')>=0?'&':'?')+'token='+encodeURIComponent(SYNC.token));
+    let j;try{j=await r.json()}catch(e){throw new Error('응답을 읽지 못함 · URL과 배포 설정 확인')}
+    if(!j.ok)throw new Error(j.err||'오류');return j;
+  }
+  const stamp=()=>{const t=new Date();return (t.getMonth()+1)+'/'+t.getDate()+' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')};
+  let busy=Promise.resolve();
+  function push(body){
+    if(!sOn())return Promise.resolve(false);
+    busy=busy.then(async()=>{
+      try{
+        if(SYNC.dirty){await api({op:'put',rows:LOG,replace:true});SYNC.dirty=false}
+        else await api(body);
+        SYNC.last=stamp();ssave();sstat();return true;
+      }catch(e){SYNC.dirty=true;ssave();sstat(e.message);return false}
+    });
+    return busy;
+  }
+  async function pull(quiet){
+    if(!sOn()){toast('먼저 URL과 비밀번호를 넣고 연결하세요.');return}
+    try{
+      const j=await api(null);let n=0;
+      (j.rows||[]).forEach(row=>{const k=LOG.findIndex(x=>x[0]===row[0]);if(k>=0)LOG[k]=row;else LOG.push(row);n++});
+      lsort();lsave();renderLog();SYNC.last=stamp();ssave();sstat();
+      if(!quiet||n)toast('구글 시트에서 '+n+'일치 기록을 불러왔습니다 (총 '+LOG.length+'일).');
+      if(LOG.length>n)push({op:'put',rows:LOG});
+    }catch(e){sstat(e.message);toast('시트에서 불러오지 못했습니다: '+e.message)}
+  }
+  $('gUrl').value=SYNC.url;$('gTok').value=SYNC.token;
+  $('gSave').onclick=async()=>{
+    SYNC.url=$('gUrl').value.trim();SYNC.token=$('gTok').value;ssave();
+    if(!sOn()){sstat();toast('URL은 https://script.google.com/ 으로 시작해야 하고 비밀번호가 필요합니다.');return}
+    toast('연결 확인 중…');await pull(false);
+  };
+  $('gPull').onclick=()=>pull(false);
+  $('gPush').onclick=async()=>{if(!sOn()){toast('먼저 연결하세요.');return}SYNC.dirty=true;ssave();const ok=await push();toast(ok?'전체 기록 '+LOG.length+'일을 시트에 올렸습니다.':'올리지 못했습니다. 인터넷 연결과 설정을 확인하세요.')};
+  window.addEventListener('online',()=>{if(SYNC.dirty)push();autoClose()});
+  /* ===== 전일종가 자동 입력 (구글 Apps Script가 SOXL 종가를 가져옴) ===== */
+  let closeBusy=false;
+  async function autoClose(){
+    if(!sOn()||closeBusy)return;const D=parse($('date').value);if(!D)return;
+    closeBusy=true;
+    try{
+      const r=await fetch(SYNC.url+(SYNC.url.indexOf('?')>=0?'&':'?')+'op=close&token='+encodeURIComponent(SYNC.token));
+      const j=await r.json();if(!j.ok||!Array.isArray(j.closes))return;
+      j.closes.forEach(([d,c])=>{if(c>0)PXX[d]=c});
+      try{localStorage.setItem('soxl-px',JSON.stringify(PXX))}catch(e){}
+      const D2=parse($('date').value);if(!D2)return;
+      const k=iso(step(D2,-1)),c=PXX[k];
+      if(c>0&&!(num('pc')>0)){$('pc').value=fmtIn(c);$('pc').classList.remove('needs');$('pc').dispatchEvent(new Event('input',{bubbles:true}));$('pcAuto').textContent='자동';toast(k.replace(/-/g,'.')+' 종가 '+f2(c)+'을(를) 자동으로 넣었습니다.')}
+      else if(!(c>0)&&!(num('pc')>0))toast(k.replace(/-/g,'.')+' 종가가 아직 없습니다 (미국 장 마감 후 자동으로 채워집니다).');
+    }catch(e){}finally{closeBusy=false}
+  }
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)autoClose()});
+  $('date').addEventListener('change',autoClose);
+  sstat();
+  if(sOn()){if(!LOG.length)pull(true);else if(SYNC.dirty)push()}
+
+  $('tabIn').onclick=()=>setTab('in');$('tabOut').onclick=()=>setTab('out');$('tabLog').onclick=()=>setTab('log');$('mbarBtn').onclick=()=>setTab('out');
+  document.body.dataset.tab='in';
+  if(!load())fill({});
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
+  calc();
+  setTimeout(autoClose,800);
+})();
+</script>
+
+
+<div id="lockScr" role="dialog" aria-label="잠금 해제">
+  <img src="icon-192.png" alt="">
+  <div class="lt">SOXL 계산기 잠금</div>
+  <div class="dots" id="lkDots"></div>
+  <div class="lm" id="lkMsg">비밀번호를 입력하세요</div>
+  <div class="pad" id="lkPad"></div>
+  <button type="button" class="forgot" id="lkForgot">비밀번호를 잊었어요</button>
+</div>
+<dialog id="lockDlg">
+  <h3>잠금 설정</h3>
+  <p id="ldInfo">앱을 열 때 비밀번호(숫자 4~6자리) 또는 생체인증을 요구합니다.</p>
+  <label id="ldCurW">현재 비밀번호<input type="password" id="ldCur" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+  <label>새 비밀번호 (숫자 4~6자리)<input type="password" id="ldNew" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+  <label>새 비밀번호 확인<input type="password" id="ldNew2" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+  <label class="chk" id="ldBioW"><input type="checkbox" id="ldBio"> Face ID / 지문으로도 열기</label>
+  <div class="err" id="ldErr"></div>
+  <div class="row"><button type="button" id="ldOff">잠금 끄기</button><button type="button" id="ldClose">닫기</button><button type="button" class="primary" id="ldSave">저장</button></div>
+</dialog>
+<script>
+(function(){
+  const K='soxl-lock',$=id=>document.getElementById(id),root=document.documentElement;
+  const get=()=>{try{return JSON.parse(localStorage.getItem(K)||'null')}catch(e){return null}};
+  const put=v=>{try{v?localStorage.setItem(K,JSON.stringify(v)):localStorage.removeItem(K)}catch(e){}};
+  const b64=a=>btoa(String.fromCharCode(...new Uint8Array(a))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const unb64=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+  const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+  async function hash(pin,salt){const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pin));return b64(d)}
+  async function bioAvail(){try{return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
+  let buf='',fails=0,until=0;
+  const L=()=>get();
+  function dots(){const n=(L()||{}).len||4;$('lkDots').innerHTML=Array.from({length:n},(_,i)=>`<i class="${i<buf.length?'on':''}"></i>`).join('')}
+  function msg(t){$('lkMsg').textContent=t}
+  let bioBusy=false;
+  function lock(){const c=L();if(!c)return;buf='';root.dataset.locked='1';dots();msg(c.cred?'지문·얼굴 인식 중… (취소하면 비밀번호 입력)':'비밀번호를 입력하세요');pad();if(c.cred)setTimeout(()=>{if(root.dataset.locked==='1'&&!document.hidden)bio()},250)}
+  function unlock(){delete root.dataset.locked;buf='';fails=0}
+  function pad(){const c=L()||{};
+    $('lkPad').innerHTML=[1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" data-k="${n}">${n}</button>`).join('')+
+      (c.cred?'<button type="button" class="ghost" data-k="bio" aria-label="생체인증">Face ID·지문</button>':'<span></span>')+
+      '<button type="button" data-k="0">0</button><button type="button" class="ghost" data-k="del" aria-label="지우기">⌫</button>'}
+  async function bio(){const c=L();if(!c||!c.cred||bioBusy)return;bioBusy=true;
+    try{await navigator.credentials.get({publicKey:{challenge:rnd(32),allowCredentials:[{type:'public-key',id:unb64(c.cred)}],userVerification:'required',timeout:60000}});unlock()}
+    catch(e){msg('비밀번호를 입력하거나 아래 지문·얼굴 버튼을 누르세요')}finally{bioBusy=false}}
+  async function key(k){
+    if(k==='bio')return bio();
+    if(Date.now()<until){msg('잠시 후 다시 시도하세요 ('+Math.ceil((until-Date.now())/1000)+'초)');return}
+    if(k==='del'){buf=buf.slice(0,-1);dots();return}
+    const c=L();if(!c)return unlock();
+    if(buf.length>=c.len)return;buf+=k;dots();
+    if(buf.length===c.len){
+      if(await hash(buf,c.salt)===c.hash){unlock();return}
+      fails++;buf='';const d=$('lkDots');d.classList.add('shake');setTimeout(()=>d.classList.remove('shake'),400);dots();
+      if(fails>=5){until=Date.now()+30000;fails=0;msg('5번 틀렸습니다. 30초 뒤 다시 시도하세요')}else msg('비밀번호가 맞지 않습니다 ('+fails+'/5)')}}
+  $('lkPad').addEventListener('click',e=>{const b=e.target.closest('button');if(b)key(b.dataset.k)});
+  document.addEventListener('keydown',e=>{if(root.dataset.locked!=='1')return;if(/^[0-9]$/.test(e.key))key(e.key);else if(e.key==='Backspace')key('del')});
+  $('lkForgot').onclick=()=>{
+    if(!confirm('비밀번호를 잊으면 이 휴대폰에 저장된 계산기 입력값과 매매기록, 구글 시트 연결 정보를 모두 지워야 잠금이 풀립니다.\n\n구글 시트에 백업해 두었다면, 나중에 시트 주소와 백업 비밀번호를 다시 넣어 기록을 불러올 수 있습니다.\n\n계속할까요?'))return;
+    if(!confirm('정말 모두 지우고 잠금을 풀까요? 되돌릴 수 없습니다.'))return;
+    try{Object.keys(localStorage).filter(k=>k.startsWith('soxl')).forEach(k=>localStorage.removeItem(k))}catch(e){}
+    location.reload()};
+  // auto-lock after 1 minute in background
+  let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden)hid=Date.now();else if(hid&&Date.now()-hid>60000)lock()});
+  // settings dialog
+  const dlg=$('lockDlg');
+  async function openDlg(){const c=L();['ldCur','ldNew','ldNew2'].forEach(i=>$(i).value='');$('ldErr').textContent='';
+    $('ldCurW').hidden=!c;$('ldOff').hidden=!c;
+    $('ldInfo').textContent=c?'잠금이 켜져 있습니다. 비밀번호를 바꾸거나 생체인증을 켜고 끌 수 있습니다. (바꾸지 않으려면 새 비밀번호 칸을 비워 두세요)':'앱을 열 때와 1분 이상 다른 앱을 쓰다 돌아올 때 비밀번호(숫자 4~6자리) 또는 생체인증을 요구합니다.';
+    const ok=await bioAvail();$('ldBioW').hidden=!ok;$('ldBio').checked=!!(c&&c.cred);
+    if(dlg.showModal)dlg.showModal();else dlg.setAttribute('open','')}
+  const close=()=>{if(dlg.close)dlg.close();else dlg.removeAttribute('open')};
+  $('btnLock').onclick=openDlg;$('ldClose').onclick=close;
+  async function checkCur(){const c=L();if(!c)return true;if(await hash($('ldCur').value,c.salt)===c.hash)return true;$('ldErr').textContent='현재 비밀번호가 맞지 않습니다.';return false}
+  $('ldOff').onclick=async()=>{if(!await checkCur())return;put(null);close();alert('잠금을 껐습니다.')};
+  $('ldSave').onclick=async()=>{
+    const c=L(),n=$('ldNew').value,n2=$('ldNew2').value;$('ldErr').textContent='';
+    if(!await checkCur())return;
+    let v=c?{...c}:null;
+    if(n||!c){if(!/^[0-9]{4,6}$/.test(n)){$('ldErr').textContent='숫자 4~6자리로 넣어 주세요.';return}
+      if(n!==n2){$('ldErr').textContent='두 비밀번호가 다릅니다.';return}
+      const salt=b64(rnd(16));v={...(v||{}),salt,hash:await hash(n,salt),len:n.length}}
+    if($('ldBio').checked&&!$('ldBioW').hidden){if(!v.cred){try{
+        const cr=await navigator.credentials.create({publicKey:{challenge:rnd(32),rp:{name:'SOXL 계산기'},user:{id:rnd(16),name:'soxl',displayName:'SOXL 계산기'},
+          pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'},timeout:60000}});
+        v.cred=b64(cr.rawId)}catch(e){$('ldErr').textContent='생체인증 등록이 취소됐거나 이 기기에서 지원되지 않습니다. 비밀번호만 저장하려면 체크를 끄세요.';return}}}
+    else delete v.cred;
+    put(v);close();alert('잠금을 설정했습니다. 앱을 열 때와 1분 이상 나갔다 올 때 잠깁니다.')};
+  if(L())lock();
+})();
+</script>
+</body>
+</html>
