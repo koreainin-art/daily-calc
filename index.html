@@ -193,8 +193,8 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
       <section class="sec">
         <h2><span class="n">1</span>오늘 상태</h2>
         <div class="fields">
-          <label class="full">주문일 (미국 날짜)<span class="dt"><input id="date" class="dtin" type="text" inputmode="numeric" placeholder="2026.09.28" maxlength="10"><button type="button" id="btnPick" aria-label="달력에서 고르기">📅</button></span><input id="datePick" class="pick" type="date" tabindex="-1" aria-hidden="true"></label>
-          <label>전일종가 <span class="auto" id="pcAuto"></span><input id="pc" type="text" inputmode="decimal" data-num></label>
+          <label class="full">종가일 (미국 날짜)<span class="dt"><input id="date" class="dtin" type="text" inputmode="numeric" placeholder="2026.09.28" maxlength="10"><button type="button" id="btnPick" aria-label="달력에서 고르기">📅</button></span><input id="datePick" class="pick" type="date" tabindex="-1" aria-hidden="true"></label>
+          <label>종가 <span class="auto" id="pcAuto"></span><input id="pc" type="text" inputmode="decimal" data-num></label>
           <label hidden>MA20 <span class="auto" id="maAuto"></span><input id="ma" type="text" inputmode="decimal" data-num></label>
           <label hidden>MA120 <span class="auto" id="ma120Auto"></span><input id="ma120" type="text" inputmode="decimal" data-num></label>
           <label>잔금 <span class="auto" id="cashAuto"></span><input id="cash" type="text" inputmode="decimal" data-num></label>
@@ -321,10 +321,10 @@ const XLSX_SRC='./xlsx.full.min.js';
   let PXX={};try{PXX=JSON.parse(localStorage.getItem('soxl-px')||'{}')||{}}catch(e){}
   function closeOf(k,mp){if(mp[k]>0)return mp[k];if(PXX[k]>0)return PXX[k];const x=PX[k.slice(2).replace(/-/g,'')];return x>0?x:0}
   function autoMA(D,pc,N){
-    // 전일(=주문일 직전 거래일) 종가까지 N일 평균. 종가: 오늘 입력값 → 기록의 전일종가 → 내장 이력 순
+    // 종가일까지 N일 평균. 종가: 오늘 입력값 → 기록의 종가 → 내장 이력 순
     if(!D||!(pc>0))return null;
-    const mp={};if(typeof LOG!=='undefined')LOG.forEach(x=>{const d=parse(x[0]);if(d&&x[14]>0)mp[iso(step(d,-1))]=x[14]});
-    let d=step(D,-1);mp[iso(d)]=pc;let s=0;
+    const mp={};if(typeof LOG!=='undefined')LOG.forEach(x=>{if(x[14]>0)mp[x[0]]=x[14]});
+    let d=new Date(D);mp[iso(d)]=pc;let s=0;
     for(let i=0;i<N;i++){const c=closeOf(iso(d),mp);if(!(c>0))return null;s+=c;d=step(d,-1)}
     return s/N;
   }
@@ -378,10 +378,11 @@ const XLSX_SRC='./xlsx.full.min.js';
   function calc(){
     autoFill();showWL();
     const D=parse($('date').value), seed=num('seed'), pc=num('pc'), hold=Math.round(num('hold'));
-    if(!(seed>0&&pc>0)){last=null;render(null,[],['사이클시드와 전일종가를 넣으면 계산이 시작됩니다.']);mbar();return}
-    const req={D:D?iso(D):'',mon:isMon(D),pmon:D?isMon(step(D,-1)):false,seed,cash:num('cash'),hold,pc,ma:num('ma'),ma120:num('ma120'),bn:num('bn'),sn:num('sn'),
+    if(!(seed>0&&pc>0)){last=null;render(null,[],['사이클시드와 종가를 넣으면 계산이 시작됩니다.']);mbar();return}
+    const DO=D?step(D,1):null;
+    const req={D:DO?iso(DO):'',mon:isMon(DO),pmon:D?isMon(D):false,seed,cash:num('cash'),hold,pc,ma:num('ma'),ma120:num('ma120'),bn:num('bn'),sn:num('sn'),
       ys:[[num('ys1'),num('yn1')],[num('ys2'),num('yn2')],[num('ys3'),num('yn3')]],yb1:num('yb1'),yq1:num('yq1'),yb2:num('yb2'),yq2:num('yq2'),
-      wl:getWL().map(w=>{const wd=parse(w.d);return {p:w.p,q:w.q,d:w.d,k:wd&&D?tradingDaysAfter(wd,D):null,wmon:isMon(wd)}})};
+      wl:getWL().map(w=>{const wd=parse(w.d);return {p:w.p,q:w.q,d:w.d,k:wd&&DO?tradingDaysAfter(wd,DO):null,wmon:isMon(wd)}})};
     const key=JSON.stringify(req);
     if(CC.k===key&&CC.r){show(CC.r,D);return}
     last=null;const my=++cseq;
@@ -398,7 +399,7 @@ const XLSX_SRC='./xlsx.full.min.js';
     const notes=(r.notes||[]).map(n=>n.t&&n.t.indexOf('MA20 또는 MA120')===0?{t:'이평선 계산에 필요한 종가가 부족합니다. 구글 시트 연결 상태를 확인하고 앱을 다시 여세요.'}:n),chips=(r.chips||[]).slice();
     if(!r.o){last=null;render(null,chips,notes);mbar();document.body.dataset.calc='ok';return}
     if(Math.round(num('hold'))>0&&!(num('avg')>0)){notes.push({t:'평단을 넣어 주세요 (보유 중이면 필수). 전날 기록이 있으면 자동으로 채워집니다.'});$('avg').classList.add('needs')}
-    if(!D)notes.push({t:'주문일을 넣으면 대기 로트 계산이 정확해집니다.'});
+    if(!D)notes.push({t:'종가일을 넣으면 대기 로트 계산이 정확해집니다.'});
     if(num('cash')>num('seed')+0.005)notes.push({t:'잔금이 사이클시드보다 큽니다. 입력값을 확인하세요.'});
     last={o:r.o,start:r.start,D};
     $('kV').textContent=f2(r.V);$('kU').textContent=(r.u*100).toFixed(1)+'%';$('kUnit').textContent=f2(r.U);
@@ -454,7 +455,7 @@ const XLSX_SRC='./xlsx.full.min.js';
   $('wlClear').onclick=()=>{if(!confirm('대기 로트를 모두 비울까요?'))return;$('wl').value='[]';save();calc()};
   $('btnClear').onclick=()=>{fill({});save();calc();toast('입력값을 비웠습니다.')};
   $('btnCopy').onclick=()=>{
-    if(!last)return;const o=last.o,d=last.D?dot(last.D):'';
+    if(!last)return;const o=last.o,d=last.D?dot(step(last.D,1))+' 장':'';
     const L=[`SOXL LOC 예약주문 ${d}`];
     const acc=[[1,sq]].concat(MUL2()>0?[[2,sq2]]:[]);
     acc.forEach(([k,f])=>{if(acc.length>1)L.push(`[계좌${k}]`);
@@ -473,7 +474,7 @@ const XLSX_SRC='./xlsx.full.min.js';
     $('pcash').value=String(num('cash'));$('phold').value=String(Math.round(num('hold')));$('pseed').value=String(num('seed'));$('pavg').value=String(num('avg'));$('pcyc').value=String(Math.round(num('cyc')));$('man').value='';
     ['pc','ma','ma120','bn','sn'].forEach(i=>$(i).value='');
     $('pc').classList.add('needs');
-    save();calc();toast('저장하고 다음 거래일로 넘겼습니다. 장 마감 후 전일종가만 넣으세요.');setTimeout(autoClose,500);
+    save();calc();toast('저장하고 다음 거래일로 넘겼습니다. 종가는 미국 장 마감 후 자동으로 채워집니다.');setTimeout(autoClose,500);
     setTab('in');$('pc').focus();
   };
 
@@ -491,7 +492,7 @@ const XLSX_SRC='./xlsx.full.min.js';
 
   function saveRow(quiet){
     if(!last){toast('계산 결과가 없어 저장하지 못했습니다.');return false}
-    const D=last.D;if(!D){toast('주문일을 넣어야 저장할 수 있습니다.');$('date').focus();return false}
+    const D=last.D;if(!D){toast('종가일을 넣어야 저장할 수 있습니다.');$('date').focus();return false}
     const dI=iso(D),o=last.o,hold=Math.round(num('hold'));
     const bn=num('bn'),sn=num('sn'),bp=bn>0?num('pc'):0,sp=sn>0?num('pc'):0;
     const pr=prevRow(dI);
@@ -645,7 +646,7 @@ const XLSX_SRC='./xlsx.full.min.js';
       j.closes.forEach(([d,c])=>{if(c>0)PXX[d]=c});
       try{localStorage.setItem('soxl-px',JSON.stringify(PXX))}catch(e){}
       const D2=parse($('date').value);if(!D2)return;
-      const k=iso(step(D2,-1)),c=PXX[k];
+      const k=iso(D2),c=PXX[k];
       if(c>0&&!(num('pc')>0)){$('pc').value=fmtIn(c);$('pc').classList.remove('needs');$('pc').dispatchEvent(new Event('input',{bubbles:true}));$('pcAuto').textContent='자동';toast(k.replace(/-/g,'.')+' 종가 '+f2(c)+'을(를) 자동으로 넣었습니다.')}
       else if(!(c>0)&&!(num('pc')>0))toast(k.replace(/-/g,'.')+' 종가가 아직 없습니다 (미국 장 마감 후 자동으로 채워집니다).');
     }catch(e){}finally{closeBusy=false}
