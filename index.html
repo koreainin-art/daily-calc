@@ -99,7 +99,7 @@ details[open] summary{margin-bottom:10px}
 .why{font-size:.76rem;color:var(--muted);line-height:1.35}
 .num{font-family:ui-monospace,"Roboto Mono","Noto Sans Mono",monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .num .p{font-size:1.12rem;font-weight:600}
-.num .q{font-size:.85rem;color:var(--muted)}
+.num .q,.num .q2{font-size:.85rem;color:var(--muted)}
 .ord.off .num .p{color:var(--muted);font-weight:400;font-family:system-ui,"Noto Sans KR",sans-serif;font-size:.9rem}
 .ord.b .num .p{color:var(--buy)} .ord.s .num .p{color:var(--sell)}
 .ord.off.b .num .p,.ord.off.s .num .p{color:var(--muted)}
@@ -138,7 +138,7 @@ label{position:relative}
 label .auto{position:absolute;right:2px;top:0;font-size:.7rem;font-weight:600;color:var(--ok);background:var(--ok-soft);padding:0 6px;border-radius:999px;line-height:1.5}
 label .auto:empty{display:none}
 #fillDetail{font-family:ui-monospace,"Roboto Mono",monospace;font-size:.78rem}
-#fillDetail:empty{display:none}
+#fillDetail{display:none!important}
 .sync{border:1px solid var(--line);border-radius:10px;padding:12px}
 .sync summary{font-weight:600;color:var(--ink)}
 .sync .fields{margin-bottom:10px}
@@ -179,7 +179,6 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
   <header>
     <div>
       <h1>SOXL 예약주문 계산기</h1>
-      <p class="sub">LOC(지정가 종가) 주문 · 매일 전일종가만 넣으면 체결·잔금·보유·이평선이 자동으로 계산됩니다</p>
     </div>
     <div class="tools">
       <button id="btnLock" type="button">🔒 잠금 설정</button>
@@ -195,14 +194,14 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
         <div class="fields">
           <label class="full">주문일 (미국 날짜)<span class="dt"><input id="date" class="dtin" type="text" inputmode="numeric" placeholder="2026.09.28" maxlength="10"><button type="button" id="btnPick" aria-label="달력에서 고르기">📅</button></span><input id="datePick" class="pick" type="date" tabindex="-1" aria-hidden="true"></label>
           <label>전일종가 <span class="auto" id="pcAuto"></span><input id="pc" type="text" inputmode="decimal" data-num></label>
-          <label>MA20 (20일선) <span class="auto" id="maAuto"></span><input id="ma" type="text" inputmode="decimal" data-num></label>
-          <label>MA120 (120일선) <span class="auto" id="ma120Auto"></span><input id="ma120" type="text" inputmode="decimal" data-num></label>
+          <label hidden>MA20 <span class="auto" id="maAuto"></span><input id="ma" type="text" inputmode="decimal" data-num></label>
+          <label hidden>MA120 <span class="auto" id="ma120Auto"></span><input id="ma120" type="text" inputmode="decimal" data-num></label>
           <label>잔금 <span class="auto" id="cashAuto"></span><input id="cash" type="text" inputmode="decimal" data-num></label>
           <label>누적보유수 <span class="auto" id="holdAuto"></span><input id="hold" type="text" inputmode="numeric" data-num></label>
           <label>평단 <span class="auto" id="avgAuto"></span><input id="avg" type="text" inputmode="decimal" data-num></label>
           <label>사이클차수<input id="cyc" type="text" inputmode="numeric" data-num></label>
           <label>사이클시드<input id="seed" type="text" inputmode="decimal" data-num></label>
-          <label class="full">주문 배수 (실제 주문 개수 = 계산 개수 × 배수, 소수점 버림)<input id="mult" type="text" inputmode="decimal" data-num placeholder="1"></label>
+          <label>계좌1 배수<input id="mult" type="text" inputmode="decimal" data-num placeholder="1"></label><label>계좌2 배수<input id="mult2" type="text" inputmode="decimal" data-num placeholder="없음"></label>
           <input type="hidden" id="pcash"><input type="hidden" id="phold"><input type="hidden" id="pseed"><input type="hidden" id="pavg"><input type="hidden" id="pcyc"><input type="hidden" id="man">
         </div>
       </section>
@@ -240,7 +239,7 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
     </form>
 
     <aside class="panel result" aria-live="polite">
-      <div class="chips" id="chips"></div>
+      <div class="chips" id="chips" hidden></div>
       <div class="orders" id="orders"></div>
       <div id="notes"></div>
       <div class="kv">
@@ -254,8 +253,7 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
         <button id="btnNext" class="primary" type="button">저장하고 내일 준비 →</button>
       </div>
       <div class="toast" id="toast"></div>
-      <p class="foot">매일 할 일: 구글 시트 백업이 연결돼 있으면 앱을 열 때 <b>전일종가가 자동으로</b> 채워집니다(새 Apps Script 필요). 자동으로 안 채워지면 장 마감 후 <b>전일종가</b>만 넣으면 전날 기록을 기준으로 어제 주문의 체결, 잔금, 보유수, 평단, 사이클이 자동 계산됩니다. 첫날(기록이 없을 때)만 잔금·보유수·평단을 직접 넣으세요. MA20·MA120은 앱에 들어 있는 SOXL 종가 이력(2026.10.1까지)과 이후 기록의 전일종가로 자동 계산됩니다. 기록을 하루라도 건너뛰면 그 사이 종가가 비어 수동 입력이 필요할 수 있습니다. 결과를 LOC 주문으로 걸고 "저장하고 내일 준비"를 누르면 끝입니다. 초록색 "자동" 표시가 있는 칸도 직접 고칠 수 있습니다.</p>
-      <p class="foot">주문 계산은 연결된 구글 Apps Script(본인 계정)에서 합니다. 인터넷이 없으면 마지막 계산 결과만 볼 수 있습니다.</p>
+      
     </aside>
   </div>
 
@@ -283,7 +281,7 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
       </div>
     </details>
     <div id="logBody"></div>
-    <p class="foot">열 구성은 원래 기록 엑셀과 같습니다 (A 날짜 ~ V 당일실현, W MA20). 줄을 누르면 그날 내용이 입력 화면으로 불러와집니다. "엑셀 불러오기"로 기존 기록 파일을 넣으면 같은 날짜는 덮어쓰고 나머지는 합칩니다. 구글 시트 백업을 켜 두면 휴대폰이 바뀌어도 기록이 남습니다.</p>
+    
     <div class="toast" id="toast2"></div>
   </section>
 </div>
@@ -296,7 +294,7 @@ const XLSX_SRC='./xlsx.full.min.js';
     '2027-01-01','2027-01-18','2027-02-15','2027-03-26','2027-05-31','2027-06-18','2027-07-05','2027-09-06','2027-11-25','2027-12-24']);
   // SOXL 종가 이력 (YYMMDD:종가) — MA20·MA120 자동 계산용. 이후 날짜는 기록의 전일종가로 이어 붙음
   const PX={"250303":20.51,"250304":20.65,"250305":21.95,"250306":19.23,"250307":20.88,"250310":17.99,"250311":17.41,"250312":18.3,"250313":18.09,"250314":19.8,"250317":20.79,"250318":19.93,"250319":20.38,"250320":19.93,"250321":19.28,"250324":21.0,"250325":20.55,"250326":18.79,"250327":17.76,"250328":16.03,"250331":15.95,"250401":15.95,"250402":16.26,"250403":11.41,"250404":8.73,"250407":9.15,"250408":8.25,"250409":12.77,"250410":9.63,"250411":10.23,"250414":10.47,"250415":10.6,"250416":9.34,"250417":9.2,"250421":8.71,"250422":9.18,"250423":10.29,"250424":12.0,"250425":12.34,"250428":12.29,"250429":11.86,"250430":12.16,"250501":12.1,"250502":13.29,"250505":13.05,"250506":12.64,"250507":13.28,"250508":13.66,"250509":14.11,"250512":17.13,"250513":18.6,"250514":18.84,"250515":18.47,"250516":18.39,"250519":18.06,"250520":17.97,"250521":17.0,"250522":16.51,"250523":15.73,"250527":17.29,"250528":17.04,"250529":17.2,"250530":16.17,"250602":16.9,"250603":18.3,"250604":19.09,"250605":18.81,"250606":19.18,"250609":20.58,"250610":21.89,"250611":21.64,"250612":21.69,"250613":20.04,"250616":21.9,"250617":21.42,"250618":21.61,"250620":21.21,"250623":21.58,"250624":23.95,"250625":24.58,"250626":25.2,"250627":25.11,"250630":25.11,"250701":24.71,"250702":26.05,"250703":26.43,"250707":24.97,"250708":26.37,"250709":26.65,"250710":27.37,"250711":27.29,"250714":26.5,"250715":27.29,"250716":27.03,"250717":27.32,"250718":27.33,"250721":27.5,"250722":26.32,"250723":25.78,"250724":25.62,"250725":25.6,"250728":26.88,"250729":27.03,"250730":27.61,"250731":24.98,"250801":24.08,"250804":25.0,"250805":24.52,"250806":23.99,"250807":25.0,"250808":25.71,"250811":25.61,"250812":28.0,"250813":29.27,"250814":29.42,"250815":27.37,"250818":27.53,"250819":26.24,"250820":25.8,"250821":25.35,"250822":27.45,"250825":27.3,"250826":27.94,"250827":28.18,"250828":28.53,"250829":26.04,"250902":25.25,"250903":24.91,"250904":25.65,"250905":26.45,"250908":27.08,"250909":27.18,"250910":28.6,"250911":29.17,"250912":29.3,"250915":30.0,"250916":30.48,"250917":30.47,"250918":33.64,"250919":33.02,"250922":34.43,"250923":34.3,"250924":34.2,"250925":33.85,"250926":34.02,"250929":34.02,"250930":34.84,"251001":36.86,"251002":39.08,"251003":38.23,"251006":41.71,"251007":38.83,"251008":42.78,"251009":42.24,"251010":34.21,"251013":39.14,"251014":36.63,"251015":39.98,"251016":40.57,"251017":40.29,"251020":42.24,"251021":41.51,"251022":38.39,"251023":41.17,"251024":43.14,"251027":46.84,"251028":46.96,"251029":49.38,"251030":47.39,"251031":47.78,"251103":48.58,"251104":42.8,"251105":46.83,"251106":43.01,"251107":41.74,"251110":44.96,"251111":41.81,"251112":43.71,"251113":39.22,"251114":38.86,"251117":36.84,"251118":34.35,"251119":35.96,"251120":30.81,"251121":31.73,"251124":35.86,"251125":36.17,"251126":39.19,"251128":41.26,"251201":41.31,"251202":43.8,"251203":46.58,"251204":45.16,"251205":46.5,"251208":47.99,"251209":47.79,"251210":49.65,"251211":48.79,"251212":41.71,"251215":41.18,"251216":40.49,"251217":36.01,"251218":38.58,"251219":41.72,"251222":43.26,"251223":43.7,"251224":44.21,"251226":44.21,"251229":43.82,"251230":43.67,"251231":42.03,"260102":47.24,"260105":49.22,"260106":54.01,"260107":52.29,"260108":49.65,"260109":53.95,"260112":54.65,"260113":56.07,"260114":55.38,"260115":58.08,"260116":60.75,"260120":57.94,"260121":63.48,"260122":63.72,"260123":61.6,"260126":60.7,"260127":64.96,"260128":70.09,"260129":70.47,"260130":61.79,"260202":65.2,"260203":61.2,"260204":53.19,"260205":53.25,"260206":61.75,"260209":64.03,"260210":63.34,"260211":68.05,"260212":63.1,"260213":64.59,"260217":64.35,"260218":66.29,"260219":65.23,"260220":67.11,"260223":65.86,"260224":68.53,"260225":71.86,"260226":65.34,"260227":62.77,"260302":62.76,"260303":53.42,"260304":56.62,"260305":54.8,"260306":47.89,"260309":53.32,"260310":54.59,"260311":56.09,"260312":50.28,"260313":50.72,"260316":53.69,"260317":54.95,"260318":54.02,"260319":54.85,"260320":51.14,"260323":53.03,"260324":54.96,"260325":57.04,"260326":48.97,"260327":46.61,"260330":40.62,"260331":47.91,"260401":52.26,"260402":52.75,"260406":54.81,"260407":56.55,"260408":67.5,"260409":71.98,"260410":76.39,"260413":80.56,"260414":85.31,"260415":85.96,"260416":88.37,"260417":94.68,"260420":95.94,"260421":98.09,"260422":105.64,"260423":112.77,"260424":128.32,"260427":123.39,"260428":109.56,"260429":117.97,"260430":126.98,"260501":130.4,"260504":127.55,"260505":144.16,"260506":165.85,"260507":152.1,"260508":176.94,"260511":190.42,"260512":172.52,"260513":184.24,"260514":186.19,"260515":164.18,"260518":151.75,"260519":151.89,"260520":173.2,"260521":178.39,"260522":190.56,"260526":225.79,"260527":217.98,"260528":224.63,"260529":224.34,"260601":227.03,"260602":266.32,"260603":280.54,"260604":262.7,"260605":182.54,"260608":211.44,"260609":201.68,"260610":180.65,"260611":223.99,"260612":234.68,"260615":272.5,"260616":226.19,"260617":233.86,"260618":279.29,"260622":300.77,"260623":231.42,"260624":229.57,"260625":252.61,"260626":215.6,"260629":236.52,"260630":266.71,"260701":217.55,"260702":181.47,"260706":194.65,"260707":165.28,"260708":174.82,"260709":192.45,"260710":192.26,"260713":165.37,"260714":176.66,"260715":165.55,"260716":142.48,"260717":135.47,"260720":136.81,"260721":158.54,"260722":160.99,"260723":157.5,"260724":136.81,"260727":128.15,"260728":109.54,"260729":91.99,"260730":114.72,"260731":114.72,"260803":116.71,"260804":139.9,"260805":132.07,"260806":132.33,"260807":140.25,"260810":130.0,"260811":133.0,"260812":142.16,"260813":145.36,"260814":144.95,"260817":151.53,"260818":129.1,"260819":120.74,"260820":122.21,"260821":120.6,"260824":111.16,"260825":115.67,"260826":116.6,"260827":123.05,"260828":111.34,"260831":112.79,"260901":105.91,"260902":106.35,"260903":106.74,"260904":117.28,"260908":123.27,"260909":125.87,"260910":115.76,"260911":121.82,"260914":101.13,"260915":102.32,"260916":103.97,"260917":114.82,"260918":123.67,"260921":141.93,"260922":151.95,"260923":146.25,"260924":146.33,"260925":151.45,"260928":142.29,"260929":147.0,"260930":147.86,"261001":153.69};
-  const IDS=['date','mult','cyc','avg','seed','cash','hold','pc','ma','ma120','bn','sn','pcash','phold','pseed','pavg','pcyc','man','yb1','yq1','yb2','yq2','ys1','yn1','ys2','yn2','ys3','yn3','wl'];
+  const IDS=['date','mult','mult2','cyc','avg','seed','cash','hold','pc','ma','ma120','bn','sn','pcash','phold','pseed','pavg','pcyc','man','yb1','yq1','yb2','yq2','ys1','yn1','ys2','yn2','ys3','yn3','wl'];
   const $=id=>document.getElementById(id);
   const pn=v=>{const x=parseFloat(String(v==null?'':v).replace(/,/g,''));return isFinite(x)?x:NaN};
   const num=id=>{const v=pn($(id).value);return isFinite(v)?v:0};
@@ -396,9 +394,8 @@ const XLSX_SRC='./xlsx.full.min.js';
     },250);
   }
   function show(r,D){
-    const notes=(r.notes||[]).slice(),chips=(r.chips||[]).slice();
+    const notes=(r.notes||[]).map(n=>n.t&&n.t.indexOf('MA20 또는 MA120')===0?{t:'이평선 계산에 필요한 종가가 부족합니다. 구글 시트 연결 상태를 확인하고 앱을 다시 여세요.'}:n),chips=(r.chips||[]).slice();
     if(!r.o){last=null;render(null,chips,notes);mbar();document.body.dataset.calc='ok';return}
-    if(MUL()!==1)chips.push(['warn','주문 ×'+MUL()+'배']);
     if(Math.round(num('hold'))>0&&!(num('avg')>0)){notes.push({t:'평단을 넣어 주세요 (보유 중이면 필수). 전날 기록이 있으면 자동으로 채워집니다.'});$('avg').classList.add('needs')}
     if(!D)notes.push({t:'주문일을 넣으면 대기 로트 계산이 정확해집니다.'});
     if(num('cash')>num('seed')+0.005)notes.push({t:'잔금이 사이클시드보다 큽니다. 입력값을 확인하세요.'});
@@ -408,14 +405,17 @@ const XLSX_SRC='./xlsx.full.min.js';
   }
 
   const MUL=()=>{const m=num('mult');return m>0?m:1};
+  const MUL2=()=>{const m=num('mult2');return m>0?m:0};
+  const sq2=q=>Math.floor(q*MUL2()+1e-9);
   const sq=q=>Math.floor(q*MUL()+1e-9);
   function row(side,label,price,q0,why,all){
-    const qty=sq(q0),m=MUL();
-    const off=!(price>0&&qty>0);
-    if(m!==1&&!off)why+=` <br><span style="opacity:.8">기준 ${fi(q0)}주 × ${m}${all?' · 실제 계좌 보유 전량 매도':''}</span>`;
-    else if(all&&!off)why+=' · 보유 전량';
+    const m2=MUL2(),qty=sq(q0),qty2=sq2(q0);
+    const off=!(price>0&&q0>0);
+    if(!off&&(MUL()!==1||m2>0))why=(why?why+' · ':'')+'기준 '+fi(q0)+'주'+(all?' · 각 계좌 보유 전량':'');
+    else if(all&&!off)why=(why?why+' · ':'')+'보유 전량';
+    const qs=off?'':(m2>0?`<br><span class="q">계좌1 ${fi(qty)}주</span><br><span class="q2">계좌2 ${fi(qty2)}주</span>`:`<br><span class="q">× ${fi(qty)}주</span>`);
     return `<div class="ord ${side}${off?' off':''}"><span class="tag ${side}">${label}</span><span class="why">${why}</span>
-      <span class="num"><span class="p">${off?'주문 없음':f2(price)}</span>${off?'':`<br><span class="q">× ${fi(qty)}주</span>`}</span></div>`;
+      <span class="num"><span class="p">${off?'주문 없음':f2(price)}</span>${qs}</span></div>`;
   }
   function render(o,chips,notes){
     $('chips').innerHTML=chips.map(([c,t])=>`<span class="chip ${c}">${t}</span>`).join('');
@@ -432,16 +432,16 @@ const XLSX_SRC='./xlsx.full.min.js';
 
   function setTab(t){document.body.dataset.tab=t;$('tabIn').setAttribute('aria-selected',t==='in');$('tabOut').setAttribute('aria-selected',t==='out');$('tabLog').setAttribute('aria-selected',t==='log');window.scrollTo(0,0)}
   function mbar(){if(!last){$('mbarTxt').textContent='입력값을 채워 주세요';return}const o=last.o;const n=[o.s1,o.s2,o.s3].filter(x=>x[0]>0&&x[1]>0).length;
-    $('mbarTxt').innerHTML='매수 '+f2(o.b1)+'×'+fi(sq(o.q1))+' · '+f2(o.b2)+'×'+fi(sq(o.q2))+'<br>매도 '+n+'건'+(MUL()!==1?' · 배수 '+MUL():'')}
+    const Q=q=>fi(sq(q))+(MUL2()>0?'/'+fi(sq2(q)):'');$('mbarTxt').innerHTML='매수 '+f2(o.b1)+'×'+Q(o.q1)+' · '+f2(o.b2)+'×'+Q(o.q2)+'<br>매도 '+n+'건'}
   function save(){try{const s={};IDS.forEach(i=>s[i]=$(i).value);localStorage.setItem('soxl-ma20',JSON.stringify(s))}catch(e){}}
   function norm(el){if(el.dataset&&el.dataset.num!==undefined)el.value=fmtIn(el.value);else if(el.classList&&el.classList.contains('dtin')){const d=parse(el.value);if(d)el.value=dot(d)}}
   function normAll(){IDS.forEach(i=>norm($(i)))}
   function load(){try{const s=JSON.parse(localStorage.getItem('soxl-ma20')||'null');if(s){IDS.forEach(i=>{if(s[i]!=null)$(i).value=s[i]});normAll();return true}}catch(e){}return false}
-  function fill(obj){IDS.forEach(i=>{if(i==='mult'&&obj.mult==null)return;$(i).value=obj[i]!=null?obj[i]:''});normAll();document.querySelectorAll('input.needs').forEach(x=>x.classList.remove('needs'))}
+  function fill(obj){IDS.forEach(i=>{if((i==='mult'||i==='mult2')&&obj[i]==null)return;$(i).value=obj[i]!=null?obj[i]:''});normAll();document.querySelectorAll('input.needs').forEach(x=>x.classList.remove('needs'))}
   function toast(t){['toast','toast2'].forEach(k=>$(k).textContent=t);clearTimeout(toast._t);toast._t=setTimeout(()=>['toast','toast2'].forEach(k=>$(k).textContent=''),3200)}
 
   const AUTO=['ma','ma120','cash','hold','avg','bn','sn','seed','cyc',...YIDS];
-  $('form').addEventListener('input',e=>{const id=e.target.id;if(id==='mult')setTimeout(renderLog,0);if(id==='pc'&&e.isTrusted)$('pcAuto').textContent='';if(e.target.classList)e.target.classList.remove('needs');
+  $('form').addEventListener('input',e=>{const id=e.target.id;if(id==='mult'||id==='mult2')setTimeout(renderLog,0);if(id==='pc'&&e.isTrusted)$('pcAuto').textContent='';if(e.target.classList)e.target.classList.remove('needs');
     if(AUTO.includes(id)){const m=new Set(($('man').value||'').split(',').filter(Boolean));if(e.target.value.trim()==='')m.delete(id);else m.add(id);$('man').value=[...m].join(',')}
     if(id==='date')$('man').value='';
     if(id==='pc'){const m=new Set(($('man').value||'').split(',').filter(Boolean));['ma','ma120','bn','sn','cash','hold','avg','seed','cyc'].forEach(x=>m.delete(x));$('man').value=[...m].join(',')}
@@ -454,8 +454,11 @@ const XLSX_SRC='./xlsx.full.min.js';
   $('btnClear').onclick=()=>{fill({});save();calc();toast('입력값을 비웠습니다.')};
   $('btnCopy').onclick=()=>{
     if(!last)return;const o=last.o,d=last.D?dot(last.D):'';
-    const L=[`SOXL LOC 예약주문 ${d}`+(MUL()!==1?` (배수 ${MUL()})`:''),`매수1 ${f2(o.b1)} × ${fi(sq(o.q1))}`,`매수2 ${f2(o.b2)} × ${fi(sq(o.q2))}`];
-    [['매도1',o.s1],['매도2',o.s2],['매도3',o.s3]].forEach(([n,s])=>L.push(s[0]>0&&sq(s[1])>0?`${n} ${f2(s[0])} × ${fi(sq(s[1]))}`+(n==='매도3'&&o.s3all?' (보유 전량)':''):`${n} 없음`));
+    const L=[`SOXL LOC 예약주문 ${d}`];
+    const acc=[[1,sq]].concat(MUL2()>0?[[2,sq2]]:[]);
+    acc.forEach(([k,f])=>{if(acc.length>1)L.push(`[계좌${k}]`);
+      L.push(`매수1 ${f2(o.b1)} × ${fi(f(o.q1))}`,`매수2 ${f2(o.b2)} × ${fi(f(o.q2))}`);
+      [['매도1',o.s1],['매도2',o.s2],['매도3',o.s3]].forEach(([n,x])=>L.push(x[0]>0&&f(x[1])>0?`${n} ${f2(x[0])} × ${fi(f(x[1]))}`+(n==='매도3'&&o.s3all?' (보유 전량)':''):`${n} 없음`))});
     const txt=L.join('\n');
     if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(()=>toast('주문 내용을 복사했습니다.'),()=>toast(txt.replace(/\n/g,' · ')))}else toast(txt.replace(/\n/g,' · '));
   };
@@ -522,7 +525,7 @@ const XLSX_SRC='./xlsx.full.min.js';
     let st=0;for(let k=LOG.length-1;k>=0;k--){if(+LOG[k][1]===1&&(k===0||+LOG[k-1][1]!==1)){st=k;break}}
     const tot=LOG.slice(st).reduce((a,x)=>a+(x[21]||0),0),m=MUL();
     const cl=v=>`style="color:var(--${v<0?'buy':'ok'})"`;
-    const plBox=`<div class="plbox"><div class="pl"><span>누적 실현손익<br><small>${LOG[st]?LOG[st][0].replace(/-/g,'.')+(+LOG[st][1]===1?' (1차)부터':' (첫 기록 · '+LOG[st][1]+'차)부터'):''}</small></span><b ${cl(tot)}>${f2(tot)}</b></div><div class="pl"><span>배수 적용 손익 <small>(×${m})</small></span><b ${cl(tot*m)}>${f2(tot*m)}</b></div></div>`;
+    const plBox=`<div class="plbox"><div class="pl"><span>누적 실현손익<br><small>${LOG[st]?LOG[st][0].replace(/-/g,'.')+(+LOG[st][1]===1?' (1차)부터':' (첫 기록 · '+LOG[st][1]+'차)부터'):''}</small></span><b ${cl(tot)}>${f2(tot)}</b></div><div class="pl"><span>계좌1 손익 <small>(×${m})</small></span><b ${cl(tot*m)}>${f2(tot*m)}</b></div>${MUL2()>0?`<div class="pl"><span>계좌2 손익 <small>(×${MUL2()})</small></span><b ${cl(tot*MUL2())}>${f2(tot*MUL2())}</b></div>`:''}</div>`;
     const rows=LOG.slice().reverse().map(x=>`<tr data-row="${x[0]}">${x.map(cell).join('')}<td><button type="button" class="del" data-d="${x[0]}" aria-label="${x[0]} 삭제">삭제</button></td></tr>`).join('');
     $('logBody').innerHTML=`${plBox}<p class="empty">최근 날짜가 위에 있습니다</p><div class="tblwrap"><table class="log"><thead><tr>${COLS.map(c=>`<th>${c}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
@@ -654,6 +657,7 @@ const XLSX_SRC='./xlsx.full.min.js';
   $('tabIn').onclick=()=>setTab('in');$('tabOut').onclick=()=>setTab('out');$('tabLog').onclick=()=>setTab('log');$('mbarBtn').onclick=()=>setTab('out');
   document.body.dataset.tab='in';
   if(!load())fill({});
+  renderLog();
   if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
   calc();
   setTimeout(autoClose,800);
