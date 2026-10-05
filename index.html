@@ -150,6 +150,7 @@ html[data-locked="1"] .wrap{visibility:hidden}
 .plbox .pl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline}
 .plbox .pl span{font-size:.85rem;color:var(--muted)}.plbox .pl b{font-size:1.05rem;text-align:right}
 .plbox .pl small{font-size:.75rem}
+.plbox .pl.sum{border-top:1px solid var(--line);padding-top:6px}.plbox .pl.sum span{color:var(--ink,inherit);font-weight:600}
 
 #lockScr{position:fixed;inset:0;z-index:100;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
 html[data-locked="1"] #lockScr{display:flex}
@@ -525,7 +526,7 @@ const XLSX_SRC='./xlsx.full.min.js';
     let st=0;for(let k=LOG.length-1;k>=0;k--){if(+LOG[k][1]===1&&(k===0||+LOG[k-1][1]!==1)){st=k;break}}
     const tot=LOG.slice(st).reduce((a,x)=>a+(x[21]||0),0),m=MUL();
     const cl=v=>`style="color:var(--${v<0?'buy':'ok'})"`;
-    const plBox=`<div class="plbox"><div class="pl"><span>누적 실현손익<br><small>${LOG[st]?LOG[st][0].replace(/-/g,'.')+(+LOG[st][1]===1?' (1차)부터':' (첫 기록 · '+LOG[st][1]+'차)부터'):''}</small></span><b ${cl(tot)}>${f2(tot)}</b></div><div class="pl"><span>계좌1 손익 <small>(×${m})</small></span><b ${cl(tot*m)}>${f2(tot*m)}</b></div>${MUL2()>0?`<div class="pl"><span>계좌2 손익 <small>(×${MUL2()})</small></span><b ${cl(tot*MUL2())}>${f2(tot*MUL2())}</b></div>`:''}</div>`;
+    const plBox=`<div class="plbox"><div class="pl"><span>누적 실현손익<br><small>${LOG[st]?LOG[st][0].replace(/-/g,'.')+(+LOG[st][1]===1?' (1차)부터':' (첫 기록 · '+LOG[st][1]+'차)부터'):''}</small></span><b ${cl(tot)}>${f2(tot)}</b></div><div class="pl"><span>계좌1 손익 <small>(×${m})</small></span><b ${cl(tot*m)}>${f2(tot*m)}</b></div>${MUL2()>0?`<div class="pl"><span>계좌2 손익 <small>(×${MUL2()})</small></span><b ${cl(tot*MUL2())}>${f2(tot*MUL2())}</b></div><div class="pl sum"><span>합산 손익</span><b ${cl(tot*(m+MUL2()))}>${f2(tot*(m+MUL2()))}</b></div>`:''}</div>`;
     const rows=LOG.slice().reverse().map(x=>`<tr data-row="${x[0]}">${x.map(cell).join('')}<td><button type="button" class="del" data-d="${x[0]}" aria-label="${x[0]} 삭제">삭제</button></td></tr>`).join('');
     $('logBody').innerHTML=`${plBox}<p class="empty">최근 날짜가 위에 있습니다</p><div class="tblwrap"><table class="log"><thead><tr>${COLS.map(c=>`<th>${c}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
@@ -679,7 +680,7 @@ const XLSX_SRC='./xlsx.full.min.js';
   <label id="ldCurW">현재 비밀번호<input type="password" id="ldCur" inputmode="numeric" maxlength="6" autocomplete="off"></label>
   <label>새 비밀번호 (숫자 4~6자리)<input type="password" id="ldNew" inputmode="numeric" maxlength="6" autocomplete="off"></label>
   <label>새 비밀번호 확인<input type="password" id="ldNew2" inputmode="numeric" maxlength="6" autocomplete="off"></label>
-  <label class="chk" id="ldBioW"><input type="checkbox" id="ldBio"> Face ID / 지문으로도 열기</label>
+  <label class="chk" id="ldBioW"><input type="checkbox" id="ldBio"> 생체인증으로도 열기</label>
   <div class="err" id="ldErr"></div>
   <div class="row"><button type="button" id="ldOff">잠금 끄기</button><button type="button" id="ldClose">닫기</button><button type="button" class="primary" id="ldSave">저장</button></div>
 </dialog>
@@ -702,7 +703,7 @@ const XLSX_SRC='./xlsx.full.min.js';
   function unlock(){delete root.dataset.locked;buf='';fails=0}
   function pad(){const c=L()||{};
     $('lkPad').innerHTML=[1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" data-k="${n}">${n}</button>`).join('')+
-      (c.cred?'<button type="button" class="ghost" data-k="bio" aria-label="생체인증">Face ID·지문</button>':'<span></span>')+
+      (c.cred?'<button type="button" class="ghost" data-k="bio" aria-label="생체인증">생체인증</button>':'<span></span>')+
       '<button type="button" data-k="0">0</button><button type="button" class="ghost" data-k="del" aria-label="지우기">⌫</button>'}
   async function bio(){const c=L();if(!c||!c.cred||bioBusy)return;bioBusy=true;
     try{await navigator.credentials.get({publicKey:{challenge:rnd(32),allowCredentials:[{type:'public-key',id:unb64(c.cred)}],userVerification:'required',timeout:60000}});unlock()}
