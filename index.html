@@ -63,8 +63,8 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
   body[data-tab="log"] .grid{display:none}
   body:not([data-tab="log"]) .logp{display:none}
   body[data-tab="in"] .mbar{display:flex}
-  .mbar{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);gap:10px;align-items:center;justify-content:space-between}
-  .mbar span{font-family:ui-monospace,"Roboto Mono",monospace;font-size:.8rem;color:var(--muted);line-height:1.35;min-width:0}
+  .mbar{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);gap:10px;align-items:center;justify-content:flex-end}
+  .mbar span{display:none;font-family:ui-monospace,"Roboto Mono",monospace;font-size:.8rem;color:var(--muted);line-height:1.35;min-width:0}
   .mbar button{flex:none}
   body{padding-bottom:96px}
 }
@@ -397,7 +397,7 @@ const XLSX_SRC='./xlsx.full.min.js';
     },250);
   }
   function show(r,D){
-    const notes=(r.notes||[]).map(n=>n.t&&n.t.indexOf('MA20 또는 MA120')===0?{t:'이평선 계산에 필요한 종가가 부족합니다. 구글 시트 연결 상태를 확인하고 앱을 다시 여세요.'}:n),chips=(r.chips||[]).slice();
+    const notes=(r.notes||[]).filter(n=>!(n.t&&n.t.indexOf('로트가 ')===0)).map(n=>n.t&&n.t.indexOf('MA20 또는 MA120')===0?{t:'이평선 계산에 필요한 종가가 부족합니다. 구글 시트 연결 상태를 확인하고 앱을 다시 여세요.'}:n),chips=(r.chips||[]).slice();
     if(!r.o){last=null;render(null,chips,notes);mbar();document.body.dataset.calc='ok';return}
     if(Math.round(num('hold'))>0&&!(num('avg')>0)){notes.push({t:'평단을 넣어 주세요 (보유 중이면 필수). 전날 기록이 있으면 자동으로 채워집니다.'});$('avg').classList.add('needs')}
     if(!D)notes.push({t:'종가일을 넣으면 대기 로트 계산이 정확해집니다.'});
