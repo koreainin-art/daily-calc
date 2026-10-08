@@ -195,14 +195,14 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
         <h2><span class="n">1</span>오늘 상태</h2>
         <div class="fields">
           <label class="full">종가일 (미국 날짜)<span class="dt"><input id="date" class="dtin" type="text" inputmode="numeric" placeholder="2026.09.28" maxlength="10"><button type="button" id="btnPick" aria-label="달력에서 고르기">📅</button></span><input id="datePick" class="pick" type="date" tabindex="-1" aria-hidden="true"></label>
-          <label>종가 <span class="auto" id="pcAuto"></span><input id="pc" type="text" inputmode="decimal" data-num></label>
-          <label hidden>MA20 <span class="auto" id="maAuto"></span><input id="ma" type="text" inputmode="decimal" data-num></label>
-          <label hidden>MA120 <span class="auto" id="ma120Auto"></span><input id="ma120" type="text" inputmode="decimal" data-num></label>
+          <label>사이클시드<input id="seed" type="text" inputmode="decimal" data-num></label>
           <label>잔금 <span class="auto" id="cashAuto"></span><input id="cash" type="text" inputmode="decimal" data-num></label>
-          <label>누적보유수 <span class="auto" id="holdAuto"></span><input id="hold" type="text" inputmode="numeric" data-num></label>
+          <label>종가 <span class="auto" id="pcAuto"></span><input id="pc" type="text" inputmode="decimal" data-num></label>
           <label>평단 <span class="auto" id="avgAuto"></span><input id="avg" type="text" inputmode="decimal" data-num></label>
           <label>사이클차수<input id="cyc" type="text" inputmode="numeric" data-num></label>
-          <label>사이클시드<input id="seed" type="text" inputmode="decimal" data-num></label>
+          <label>누적보유수 <span class="auto" id="holdAuto"></span><input id="hold" type="text" inputmode="numeric" data-num></label>
+          <label hidden>MA20 <span class="auto" id="maAuto"></span><input id="ma" type="text" inputmode="decimal" data-num></label>
+          <label hidden>MA120 <span class="auto" id="ma120Auto"></span><input id="ma120" type="text" inputmode="decimal" data-num></label>
           <label>계좌1 배수<input id="mult" type="text" inputmode="decimal" data-num placeholder="1"></label><label>계좌2 배수<input id="mult2" type="text" inputmode="decimal" data-num placeholder="없음"></label>
           <input type="hidden" id="pcash"><input type="hidden" id="phold"><input type="hidden" id="pseed"><input type="hidden" id="pavg"><input type="hidden" id="pcyc"><input type="hidden" id="man">
         </div>
