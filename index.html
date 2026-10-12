@@ -55,13 +55,14 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 @media (max-width:880px){
   .grid{grid-template-columns:minmax(0,1fr)}
   .result{position:static}
-  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
   .tabs button{border:0;border-radius:7px;padding:10px;font-size:.95rem;font-weight:600;background:transparent;color:var(--muted)}
   .tabs button[aria-selected="true"]{background:var(--accent);color:#fff}
   body[data-tab="in"] .result{display:none}
   body[data-tab="out"] .inputs{display:none}
-  body[data-tab="log"] .grid{display:none}
+  body[data-tab="log"] .grid,body[data-tab="dual"] .grid{display:none}
   body:not([data-tab="log"]) .logp{display:none}
+  body:not([data-tab="dual"]) .dualp{display:none}
   body[data-tab="in"] .mbar{display:flex}
   .mbar{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--panel);border-top:1px solid var(--line);gap:10px;align-items:center;justify-content:flex-end}
   .mbar span{display:none;font-family:ui-monospace,"Roboto Mono",monospace;font-size:.8rem;color:var(--muted);line-height:1.35;min-width:0}
@@ -147,6 +148,26 @@ label .auto:empty{display:none}
 .sstat.ok{background:var(--ok-soft);color:var(--ok)} .sstat.bad{background:var(--warn-soft);color:var(--warn)}
 
 html[data-locked="1"] .wrap{visibility:hidden}
+.dualp{display:flex;flex-direction:column;gap:14px}
+.dualp h2{font-size:1rem;margin:0}
+.dcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.dcard{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--panel)}
+.dcard .dh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.dcard .dh b{font-size:1.02rem}
+.dcard .dh span{font-size:.8rem;color:var(--muted)}
+.dkv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.dkv div{background:var(--bg);border-radius:8px;padding:6px 8px}
+.dkv span{display:block;font-size:.7rem;color:var(--muted)}
+.dkv b{font-family:ui-monospace,"Roboto Mono",monospace;font-size:.86rem;font-weight:500}
+.dtbl{overflow:auto;border:1px solid var(--line);border-radius:8px}
+.dtbl table{border-collapse:collapse;font-size:.76rem;white-space:nowrap;width:100%}
+.dtbl th,.dtbl td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+.dtbl th{background:var(--accent-soft);font-weight:600}
+.dtbl td{font-family:ui-monospace,"Roboto Mono",monospace}
+.dtbl td:first-child,.dtbl th:first-child{text-align:left}
+.dset .acc{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;border:1px dashed var(--line);border-radius:8px;padding:10px;margin-bottom:8px}
+.dset .acc label.full{grid-column:1/-1}
+.dset textarea{font-family:ui-monospace,monospace;font-size:.85rem;width:100%;min-height:58px;border:1.5px solid var(--fieldline);border-radius:7px;background:var(--field);color:var(--ink);padding:6px 8px}
 .plbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:4px 0 10px;background:var(--panel);display:grid;gap:6px}
 .plbox .pl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline}
 .plbox .pl span{font-size:.85rem;color:var(--muted)}.plbox .pl b{font-size:1.05rem;text-align:right}
@@ -188,7 +209,7 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
     </div>
   </header>
 
-  <div class="tabs" role="tablist"><button type="button" role="tab" id="tabIn" aria-selected="true">입력</button><button type="button" role="tab" id="tabOut" aria-selected="false">주문 결과</button><button type="button" role="tab" id="tabLog" aria-selected="false">기록</button></div>
+  <div class="tabs" role="tablist"><button type="button" role="tab" id="tabIn" aria-selected="true">입력</button><button type="button" role="tab" id="tabOut" aria-selected="false">주문 결과</button><button type="button" role="tab" id="tabLog" aria-selected="false">기록</button><button type="button" role="tab" id="tabDual" aria-selected="false">듀얼</button></div>
   <div class="grid">
     <form class="panel inputs" id="form" autocomplete="off">
       <section class="sec">
@@ -287,6 +308,22 @@ dialog#lockDlg::backdrop{background:rgba(0,0,0,.45)}
     <div id="logBody"></div>
     
     <div class="toast" id="toast2"></div>
+  </section>
+
+  <section class="panel dualp" id="dualPanel">
+    <div class="loghead">
+      <h2>듀얼 계좌</h2>
+      <div class="tools"><button type="button" id="dRefresh">새로 계산</button><button type="button" class="primary" id="dCopy">주문 복사</button></div>
+    </div>
+    <div class="sstat" id="dStat">구글 시트 연결 후 사용할 수 있습니다.</div>
+    <div class="dcards" id="dCards"></div>
+    <details class="sync dset" id="dSetBox">
+      <summary>듀얼 계좌 설정</summary>
+      <p class="hint" style="margin:0 0 10px;color:var(--muted);font-size:.82rem">계좌마다 첫 주문일과 시작 금액만 넣으면 매일 종가로 자동 계산됩니다. 연초 비율 맞추기처럼 돈을 넣거나 뺀 날은 '자금 조정'에 한 줄씩 적으세요 (예: 2027-01-04 -5000 · 그날 장 마감 후 반영).</p>
+      <div id="dAccs"></div>
+      <div class="tools"><button type="button" id="dAdd">계좌 추가</button><button type="button" class="primary" id="dSave">설정 저장</button></div>
+    </details>
+    <div class="toast" id="toast3"></div>
   </section>
 </div>
 
@@ -463,7 +500,7 @@ const XLSX_SRC='./xlsx.full.min.js';
     $('orders').innerHTML=plan(o).map(S=>row(S,S.lb==='매수1'&&last.start&&o.mode!==2?'시작일: 종가에 무조건 매수':S.lb==='매도3'&&last.start?'사이클 시작일은 없음':'',S.lb==='매도3'&&o.s3all,o)).join('');
   }
 
-  function setTab(t){document.body.dataset.tab=t;$('tabIn').setAttribute('aria-selected',t==='in');$('tabOut').setAttribute('aria-selected',t==='out');$('tabLog').setAttribute('aria-selected',t==='log');window.scrollTo(0,0)}
+  function setTab(t){document.body.dataset.tab=t;$('tabIn').setAttribute('aria-selected',t==='in');$('tabOut').setAttribute('aria-selected',t==='out');$('tabLog').setAttribute('aria-selected',t==='log');$('tabDual').setAttribute('aria-selected',t==='dual');if(t==='dual'&&window.dualLoad)window.dualLoad(false);window.scrollTo(0,0)}
   function mbar(){if(!last){$('mbarTxt').textContent='입력값을 채워 주세요';return}const P=plan(last.o);
     const Q=x=>fi(x.q[1])+(MUL2()>0?'/'+fi(x.q[2]):'');const t=sd=>P.filter(S=>S.sd===sd&&S.parts.length).map(S=>S.parts.map(x=>px(last.o,S.lb,x.p)+'×'+Q(x)).join('+')).join(' · ')||'없음';$('mbarTxt').innerHTML='매수 '+t('b')+'<br>매도 '+t('s')}
   function save(){try{const s={};IDS.forEach(i=>s[i]=$(i).value);localStorage.setItem('soxl-ma20',JSON.stringify(s))}catch(e){}}
@@ -696,7 +733,58 @@ const XLSX_SRC='./xlsx.full.min.js';
   sstat();
   if(sOn()){if(!LOG.length)pull(true);else if(SYNC.dirty)push()}
 
-  $('tabIn').onclick=()=>setTab('in');$('tabOut').onclick=()=>setTab('out');$('tabLog').onclick=()=>setTab('log');$('mbarBtn').onclick=()=>setTab('out');
+  /* ===== 듀얼 계좌 (계산은 Apps Script) ===== */
+  let DUAL=null,DACC=[],dBusy=false;
+  const DK='soxl-dual-cache';try{DUAL=JSON.parse(localStorage.getItem(DK)||'null')}catch(e){}
+  const dt3=t=>{['toast3'].forEach(k=>$(k).textContent=t);clearTimeout(dt3._t);dt3._t=setTimeout(()=>$('toast3').textContent='',3500)};
+  const dd=s=>String(s||'').replace(/-/g,'.');
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const why=o=>o.type==='MOC'?'기간 만료 정리':o.side==='buy'?'신규 매수':(String(o.why).indexOf('MA')>=0?'보유분 매도':'익절 매도');
+  function dRender(){
+    const cards=$('dCards');
+    if(!DUAL||!DUAL.length){cards.innerHTML='<p class="empty">아래 "듀얼 계좌 설정"에서 계좌를 추가하세요.</p>';return}
+    const x0=DUAL[0];$('dStat').className='sstat ok';$('dStat').textContent='종가 '+dd(x0.lastDate)+' '+f2(x0.close)+' 기준 · '+dd(x0.orderDate)+' 장 주문'+(DUAL.at?' · 계산 '+DUAL.at:'');
+    cards.innerHTML=DUAL.map(x=>{
+      const ords=x.orders.length?x.orders.map(o=>{const sd=o.side==='buy'?'b':'s';return `<div class="ord ${sd}"><span class="tag ${sd}">${o.side==='buy'?'매수':'매도'}</span><span class="why">${why(o)}${o.type==='MOC'?' · 시장가':' · LOC'}</span><span class="nums"><span class="num"><span class="p">${o.type==='MOC'?'종가 시장가(MOC)':f2(o.p)}</span><br><span class="q">× ${fi(o.q)}주</span></span></span></div>`}).join(''):'<div class="ord off"><span class="tag">-</span><span class="why"></span><span class="nums"><span class="num"><span class="p">주문 없음</span></span></span></div>';
+      const pos=x.positions.length?`<div class="dtbl"><table><thead><tr><th>보유</th><th>매수일</th><th>매수가</th><th>수량</th><th>목표가</th><th>정리일</th></tr></thead><tbody>${x.positions.map(p=>`<tr><td>${p.mode==='공격'?'공':'방'}${p.tier}</td><td>${dd(p.date).slice(2)}</td><td>${f2(p.price)}</td><td>${fi(p.qty)}</td><td>${p.target?f2(p.target):'-'}</td><td>${dd(p.stop).slice(5)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="empty">보유 없음</p>';
+      const tr=x.trades.length?`<details><summary>최근 매도 ${x.trades.length}건</summary><div class="dtbl"><table><thead><tr><th>매도일</th><th>매수가</th><th>매도가</th><th>수량</th><th>손익$</th></tr></thead><tbody>${x.trades.map(t=>`<tr><td>${dd(t.s).slice(2)}</td><td>${f2(t.bp)}</td><td>${f2(t.sp)}</td><td>${fi(t.q)}</td><td style="color:var(--${t.pnl<0?'buy':'ok'})">${f2(t.pnl)}</td></tr>`).join('')}</tbody></table></div></details>`:'';
+      return `<div class="dcard"><div class="dh"><b>${esc(x.name)}</b><span class="chip ${x.mode==='공격'?'up':''}">${x.mode} 모드</span><span>${x.started?dd(x.start)+' 시작':'시작 전 미리보기 ('+dd(x.start)+' 첫 주문)'}</span></div>
+        <div class="orders">${ords}</div>
+        <div class="dkv"><div><span>총자산</span><b>${f2(x.total)}</b></div><div><span>현금</span><b>${f2(x.cash)}</b></div><div><span>수익률</span><b style="color:var(--${x.unitRet<0?'buy':'ok'})">${(x.unitRet>=0?'+':'')+x.unitRet.toFixed(2)}%</b></div><div><span>보유</span><b>${fi(x.hold)}주</b></div><div><span>실현손익</span><b>${f2(x.realized)}</b></div><div><span>넣은 돈</span><b>${f2(x.invested)}</b></div></div>
+        ${pos}${tr}</div>`}).join('');
+  }
+  function dAccRender(){
+    $('dAccs').innerHTML=DACC.map((a,i)=>`<div class="acc" data-i="${i}"><label>계좌 이름<input data-k="name" value="${esc(a.name||'')}"></label><label>첫 주문일<input data-k="start" placeholder="2026-10-13" value="${esc(a.start||'')}"></label><label>시작 금액 ($)<input data-k="cap" inputmode="decimal" value="${esc(a.cap||'')}"></label>
+      <label class="full">자금 조정 (날짜 금액, 한 줄에 하나)<textarea data-k="adj">${esc((a.adj||[]).map(x=>x.d+' '+x.amt).join('\n'))}</textarea></label><button type="button" data-del="${i}">이 계좌 삭제</button></div>`).join('')||'<p class="empty">계좌가 없습니다.</p>';
+  }
+  function dAccRead(){
+    return [...document.querySelectorAll('#dAccs .acc')].map(el=>{const g=k=>el.querySelector('[data-k="'+k+'"]').value.trim();
+      const st=parse(g('start'));const adj=g('adj').split(/\n+/).map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.split(/[\s,]+/);const d=parse(m[0]);return d&&isFinite(pn(m[1]))?{d:iso(d),amt:pn(m[1])}:null}).filter(Boolean);
+      return {name:g('name')||'듀얼',start:st?iso(st):'',cap:pn(g('cap'))||0,adj}})}
+  async function dualLoad(force){
+    if(!sOn()){$('dStat').className='sstat';$('dStat').textContent='구글 시트 연결 후 사용할 수 있습니다 (기록 탭 → 구글 시트 자동 백업 설정).';dRender();return}
+    if(dBusy)return;if(!force&&DUAL&&DUAL.t&&Date.now()-DUAL.t<5*60e3){dRender();return}
+    dBusy=true;$('dStat').className='sstat';$('dStat').textContent='계산 중…';
+    try{const j=await api({op:'dual'});DACC=j.accts||[];DUAL=j.dual||[];DUAL.t=Date.now();DUAL.at=stamp();
+      try{localStorage.setItem(DK,JSON.stringify(DUAL))}catch(e){}
+      if(!$('dSetBox').open)dAccRender();dRender();if(!DACC.length)$('dSetBox').open=true}
+    catch(e){$('dStat').className='sstat bad';$('dStat').textContent='듀얼 계산을 불러오지 못했습니다 ('+e.message+')';dRender()}
+    finally{dBusy=false}
+  }
+  window.dualLoad=dualLoad;
+  $('dRefresh').onclick=()=>dualLoad(true);
+  $('dAdd').onclick=()=>{DACC=dAccRead();DACC.push({name:'듀얼'+(DACC.length+1),start:'',cap:'',adj:[]});dAccRender()};
+  $('dAccs').addEventListener('click',e=>{const b=e.target.closest('button[data-del]');if(!b)return;if(!confirm('이 계좌 설정을 지울까요? (저장을 눌러야 반영)'))return;DACC=dAccRead();DACC.splice(+b.dataset.del,1);dAccRender()});
+  $('dSave').onclick=async()=>{
+    const a=dAccRead();if(a.some(x=>!x.start||!(x.cap>0))){dt3('계좌마다 첫 주문일(예: 2026-10-13)과 시작 금액을 넣어 주세요.');return}
+    try{await api({op:'dset',accts:a});DACC=a;dt3('듀얼 설정을 저장했습니다.');$('dSetBox').open=false;dualLoad(true)}catch(e){dt3('저장하지 못했습니다: '+e.message)}};
+  $('dCopy').onclick=()=>{if(!DUAL||!DUAL.length)return;const L=[];
+    DUAL.forEach(x=>{L.push(`[${x.name}] ${dd(x.orderDate)} 장 · ${x.mode} 모드`);if(!x.orders.length)L.push('주문 없음');
+      x.orders.forEach(o=>L.push(`${o.side==='buy'?'매수':'매도'} ${o.type==='MOC'?'종가 시장가(MOC)':'LOC '+f2(o.p)} × ${fi(o.q)}`))});
+    const t=L.join('\n');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(()=>dt3('듀얼 주문을 복사했습니다.'),()=>dt3(t));else dt3(t)};
+  dRender();if(window.matchMedia('(min-width:881px)').matches)setTimeout(()=>dualLoad(false),1500);
+
+  $('tabIn').onclick=()=>setTab('in');$('tabOut').onclick=()=>setTab('out');$('tabLog').onclick=()=>setTab('log');$('tabDual').onclick=()=>setTab('dual');$('mbarBtn').onclick=()=>setTab('out');
   document.body.dataset.tab='in';
   if(!load())fill({});
   renderLog();
